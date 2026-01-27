@@ -99,19 +99,22 @@ export function Sidebar() {
       )}
     >
       {/* Logo */}
-      <div className="h-16 flex items-center px-4 border-b border-sidebar-border">
-        <Link href="/dashboard" className="flex items-center">
+      <div className={cn(
+        "flex items-center justify-center border-b border-sidebar-border",
+        collapsed ? "h-16 px-2" : "h-20 px-4"
+      )}>
+        <Link href="/dashboard" className="flex items-center justify-center">
           {collapsed ? (
-            <div className="w-9 h-9 rounded-lg bg-primary flex items-center justify-center">
-              <span className="text-primary-foreground font-bold text-lg">T</span>
+            <div className="w-10 h-10 rounded-lg bg-primary flex items-center justify-center">
+              <span className="text-primary-foreground font-bold text-xl">T</span>
             </div>
           ) : (
             <Image
               src="/logo.png"
               alt="Tractus Logo"
-              width={140}
-              height={56}
-              className="h-12 w-auto"
+              width={180}
+              height={72}
+              className="h-14 w-auto"
               priority
             />
           )}
