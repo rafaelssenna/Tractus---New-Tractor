@@ -2,6 +2,7 @@
 
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
+import Image from 'next/image'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
@@ -65,13 +66,14 @@ export default function LoginPage() {
           {/* Logo */}
           <div className="mb-12">
             <div className="flex items-center gap-4 mb-6">
-              <div className="w-16 h-16 rounded-2xl bg-primary flex items-center justify-center">
-                <span className="text-primary-foreground font-bold text-3xl">T</span>
-              </div>
-              <div>
-                <h1 className="text-4xl font-bold tracking-tight">TRACTUS</h1>
-                <p className="text-muted-foreground">New Tractor</p>
-              </div>
+              <Image
+                src="/logo.png"
+                alt="Tractus Logo"
+                width={200}
+                height={80}
+                className="h-20 w-auto"
+                priority
+              />
             </div>
             <p className="text-xl text-muted-foreground max-w-md">
               Sistema integrado de gestão para serviços de máquinas pesadas e material rodante
@@ -135,15 +137,14 @@ export default function LoginPage() {
         <div className="w-full max-w-md">
           {/* Mobile logo */}
           <div className="lg:hidden text-center mb-8">
-            <div className="inline-flex items-center gap-3 mb-4">
-              <div className="w-12 h-12 rounded-xl bg-primary flex items-center justify-center">
-                <span className="text-primary-foreground font-bold text-xl">T</span>
-              </div>
-              <div className="text-left">
-                <h1 className="text-2xl font-bold">TRACTUS</h1>
-                <p className="text-xs text-muted-foreground">New Tractor</p>
-              </div>
-            </div>
+            <Image
+              src="/logo.png"
+              alt="Tractus Logo"
+              width={160}
+              height={64}
+              className="h-16 w-auto mx-auto"
+              priority
+            />
           </div>
 
           <Card className="border-border/50 shadow-lg">
