@@ -52,7 +52,7 @@ interface Proposta {
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL
 
-const statusConfig: Record<string, { label: string; variant: 'default' | 'secondary' | 'destructive' | 'outline'; icon: React.ElementType }> = {
+const statusConfig: Record<Proposta['status'], { label: string; variant: 'default' | 'secondary' | 'destructive' | 'outline'; icon: React.ElementType }> = {
   EM_ABERTO: { label: 'Em Aberto', variant: 'secondary', icon: Clock },
   AGUARDANDO_APROVACAO: { label: 'Aguardando Aprovação', variant: 'outline', icon: AlertCircle },
   APROVADA: { label: 'Aprovada', variant: 'default', icon: CheckCircle },
@@ -446,7 +446,7 @@ export default function PropostasPage() {
                 </thead>
                 <tbody className="divide-y divide-border">
                   {propostas.map((proposta) => {
-                    const statusInfo = statusConfig[proposta.status] ?? statusConfig.EM_ABERTO
+                    const statusInfo = statusConfig[proposta.status]
                     const StatusIcon = statusInfo.icon
                     return (
                       <tr key={proposta.id} className="hover:bg-muted/30 transition-colors">
