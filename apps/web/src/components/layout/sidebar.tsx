@@ -11,14 +11,28 @@ import {
   Factory,
   CheckCircle,
   ChevronLeft,
+  ChevronDown,
   Settings,
   LogOut,
   Bell,
   User,
+  BarChart3,
+  Users,
+  MapPin,
+  Route,
+  UserCheck,
+  FileText,
 } from 'lucide-react'
 import { useState } from 'react'
 
-const menuItems = [
+type MenuItem = {
+  title: string
+  href: string
+  icon: React.ComponentType<{ className?: string }>
+  submenu?: { title: string; href: string; icon: React.ComponentType<{ className?: string }> }[]
+}
+
+const menuItems: MenuItem[] = [
   {
     title: 'Dashboard',
     href: '/dashboard',
@@ -28,6 +42,14 @@ const menuItems = [
     title: 'Comercial',
     href: '/comercial',
     icon: ShoppingCart,
+    submenu: [
+      { title: 'Visão Geral', href: '/comercial', icon: BarChart3 },
+      { title: 'Clientes', href: '/comercial/clientes', icon: Users },
+      { title: 'Vendedores', href: '/comercial/vendedores', icon: UserCheck },
+      { title: 'Propostas', href: '/comercial/propostas', icon: FileText },
+      { title: 'Visitas', href: '/comercial/visitas', icon: MapPin },
+      { title: 'Rotas', href: '/comercial/rotas', icon: Route },
+    ],
   },
   {
     title: 'Suprimentos',
@@ -54,6 +76,19 @@ const menuItems = [
 export function Sidebar() {
   const pathname = usePathname()
   const [collapsed, setCollapsed] = useState(false)
+  const [expandedMenus, setExpandedMenus] = useState<string[]>([])
+
+  const toggleSubmenu = (href: string) => {
+    setExpandedMenus((prev) =>
+      prev.includes(href) ? prev.filter((h) => h !== href) : [...prev, href]
+    )
+  }
+
+  // Auto-expand menu if current path is in submenu
+  const isInSubmenu = (item: MenuItem) => {
+    if (!item.submenu) return false
+    return item.submenu.some((sub) => pathname === sub.href || pathname.startsWith(sub.href + '/'))
+  }
 
   return (
     <aside
@@ -99,6 +134,69 @@ export function Sidebar() {
         </div>
         {menuItems.map((item) => {
           const isActive = pathname.startsWith(item.href)
+          const hasSubmenu = item.submenu && item.submenu.length > 0
+          const isExpanded = expandedMenus.includes(item.href) || isInSubmenu(item)
+
+          if (hasSubmenu) {
+            return (
+              <div key={item.href}>
+                <button
+                  onClick={() => toggleSubmenu(item.href)}
+                  className={cn(
+                    'w-full flex items-center gap-3 px-3 py-2.5 rounded-lg transition-all group relative',
+                    isActive
+                      ? 'bg-primary/10 text-primary'
+                      : 'text-muted-foreground hover:bg-sidebar-accent/50 hover:text-foreground'
+                  )}
+                >
+                  {isActive && (
+                    <div className="absolute left-0 top-1/2 -translate-y-1/2 w-1 h-6 bg-primary rounded-r-full" />
+                  )}
+                  <item.icon
+                    className={cn(
+                      'w-5 h-5 shrink-0 transition-colors',
+                      isActive ? 'text-primary' : 'group-hover:text-foreground'
+                    )}
+                  />
+                  {!collapsed && (
+                    <>
+                      <span className="text-sm font-medium flex-1 text-left">{item.title}</span>
+                      <ChevronDown
+                        className={cn(
+                          'w-4 h-4 transition-transform',
+                          isExpanded && 'rotate-180'
+                        )}
+                      />
+                    </>
+                  )}
+                </button>
+                {/* Submenu */}
+                {!collapsed && isExpanded && (
+                  <div className="ml-4 mt-1 space-y-1 border-l border-sidebar-border pl-3">
+                    {item.submenu?.map((subItem) => {
+                      const isSubActive = pathname === subItem.href
+                      return (
+                        <Link
+                          key={subItem.href}
+                          href={subItem.href}
+                          className={cn(
+                            'flex items-center gap-2 px-3 py-2 rounded-lg transition-all text-sm',
+                            isSubActive
+                              ? 'bg-primary/10 text-primary font-medium'
+                              : 'text-muted-foreground hover:bg-sidebar-accent/50 hover:text-foreground'
+                          )}
+                        >
+                          <subItem.icon className="w-4 h-4" />
+                          <span>{subItem.title}</span>
+                        </Link>
+                      )
+                    })}
+                  </div>
+                )}
+              </div>
+            )
+          }
+
           return (
             <Link
               key={item.href}

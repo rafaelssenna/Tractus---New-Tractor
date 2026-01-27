@@ -87,6 +87,38 @@ export async function propostasRoutes(app: FastifyInstance) {
     return reply.status(201).send(proposta)
   })
 
+  // Atualizar proposta
+  app.put('/:id', async (request, reply) => {
+    const { id } = request.params as { id: string }
+    const data = propostaSchema.partial().parse(request.body)
+
+    // Calcular margem se custo e valor informados
+    let margem
+    if (data.custoEstimado !== undefined && data.valor !== undefined && data.valor > 0) {
+      margem = ((data.valor - (data.custoEstimado || 0)) / data.valor) * 100
+    } else if (data.custoEstimado !== undefined || data.valor !== undefined) {
+      // Buscar dados atuais para recalcular margem
+      const current = await db.proposta.findUnique({ where: { id } })
+      if (current) {
+        const valor = data.valor ?? current.valor
+        const custo = data.custoEstimado ?? current.custoEstimado
+        if (custo && valor > 0) {
+          margem = ((valor - custo) / valor) * 100
+        }
+      }
+    }
+
+    const proposta = await db.proposta.update({
+      where: { id },
+      data: {
+        ...data,
+        ...(margem !== undefined && { margem }),
+      },
+    })
+
+    return proposta
+  })
+
   // Atualizar status
   app.patch('/:id/status', async (request, reply) => {
     const { id } = request.params as { id: string }

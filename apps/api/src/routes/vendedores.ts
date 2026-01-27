@@ -1,5 +1,10 @@
 import type { FastifyInstance } from 'fastify'
+import { z } from 'zod'
 import { db } from '@tractus/database'
+
+const createVendedorSchema = z.object({
+  userId: z.string(),
+})
 
 export async function vendedoresRoutes(app: FastifyInstance) {
   // Listar todos os vendedores
@@ -37,6 +42,52 @@ export async function vendedoresRoutes(app: FastifyInstance) {
     }
 
     return vendedor
+  })
+
+  // Listar usuários que podem ser vendedores (não são vendedores ainda)
+  app.get('/usuarios-disponiveis', async () => {
+    const usuarios = await db.user.findMany({
+      where: {
+        active: true,
+        vendedor: null, // Não tem perfil de vendedor
+      },
+      select: { id: true, name: true, email: true, role: true },
+    })
+
+    return usuarios
+  })
+
+  // Criar vendedor a partir de um usuário
+  app.post('/', async (request, reply) => {
+    const { userId } = createVendedorSchema.parse(request.body)
+
+    // Verificar se o usuário existe
+    const user = await db.user.findUnique({ where: { id: userId } })
+    if (!user) {
+      return reply.status(404).send({ error: 'Usuário não encontrado' })
+    }
+
+    // Verificar se já é vendedor
+    const existingVendedor = await db.vendedor.findUnique({ where: { userId } })
+    if (existingVendedor) {
+      return reply.status(400).send({ error: 'Usuário já é um vendedor' })
+    }
+
+    const vendedor = await db.vendedor.create({
+      data: { userId },
+      include: { user: { select: { id: true, name: true, email: true } } },
+    })
+
+    return reply.status(201).send(vendedor)
+  })
+
+  // Remover vendedor
+  app.delete('/:id', async (request, reply) => {
+    const { id } = request.params as { id: string }
+
+    await db.vendedor.delete({ where: { id } })
+
+    return reply.status(204).send()
   })
 
   // Dashboard do vendedor (metas e indicadores)
