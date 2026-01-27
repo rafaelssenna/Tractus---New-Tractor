@@ -62,23 +62,20 @@ export default function LoginPage() {
         </div>
 
         {/* Content */}
-        <div className="relative z-10 flex flex-col justify-center px-12 xl:px-24">
+        <div className="relative z-10 flex flex-col justify-center items-center px-12 xl:px-24">
           {/* Logo */}
-          <div className="mb-16">
-            <div className="flex items-center justify-center mb-10">
-              <div className="relative">
-                <div className="absolute inset-0 blur-2xl bg-primary/20 scale-125 rounded-full" />
-                <Image
-                  src="/logo.png"
-                  alt="Tractus Logo"
-                  width={800}
-                  height={320}
-                  className="h-96 w-auto relative z-10 drop-shadow-[0_0_20px_rgba(250,204,21,0.3)]"
-                  priority
-                />
-              </div>
+          <div className="mb-12">
+            <div className="flex items-center justify-center mb-8">
+              <Image
+                src="/logo.png"
+                alt="Tractus Logo"
+                width={700}
+                height={280}
+                className="h-80 w-auto drop-shadow-[0_0_8px_rgba(250,204,21,0.15)]"
+                priority
+              />
             </div>
-            <p className="text-xl text-muted-foreground max-w-md">
+            <p className="text-xl text-muted-foreground max-w-md text-center">
               Sistema integrado de gestão para serviços de máquinas pesadas e material rodante
             </p>
           </div>
