@@ -23,5 +23,5 @@ RUN pnpm build:api
 # Expose port (Railway uses dynamic PORT)
 EXPOSE 3333
 
-# Start command - db:push with error handling, then start API
-CMD ["sh", "-c", "pnpm db:push || echo 'db:push failed, continuing...' && pnpm start:api"]
+# Start API directly with node (faster startup)
+CMD ["node", "apps/api/dist/server.js"]
