@@ -1,0 +1,569 @@
+// Tractus - Sistema de Gestão New Tractor
+// Schema do Banco de Dados - Módulo Comercial
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ==========================================
+// ENUMS
+// ==========================================
+
+enum Role {
+  ADMIN
+  DIRETOR
+  COMERCIAL
+  TECNICO
+  ORCAMENTO
+  FINANCEIRO
+  PCP
+  PRODUCAO
+  QUALIDADE
+  ALMOXARIFADO
+  RH
+}
+
+enum DiaSemana {
+  SEGUNDA
+  TERCA
+  QUARTA
+  QUINTA
+  SEXTA
+  SABADO
+}
+
+enum StatusLaudo {
+  EM_ELABORACAO
+  FINALIZADO
+  CONVERTIDO_PROPOSTA
+}
+
+enum StatusProposta {
+  EM_ABERTO
+  AGUARDANDO_APROVACAO
+  APROVADA
+  EM_EXECUCAO
+  FATURADA
+  CANCELADA
+}
+
+enum StatusLiberacaoCusto {
+  EM_ANALISE
+  APROVADO
+  REPROVADO
+  AGUARDANDO_AJUSTE
+}
+
+enum TipoDespesa {
+  COMBUSTIVEL
+  TROCA_OLEO
+  REVISAO
+  PNEU_NIVEL
+  PNEU_TROCA
+  OUTROS
+}
+
+enum CondicaoSolo {
+  BAIXO_IMPACTO
+  MEDIO_IMPACTO
+  ALTO_IMPACTO
+}
+
+enum StatusDesgaste {
+  DENTRO_PARAMETROS
+  FORA_PARAMETROS
+}
+
+enum CategoriaVenda {
+  RODANTE
+  PECA
+  CILINDRO
+}
+
+enum StatusOS {
+  ABERTA
+  EM_PRODUCAO
+  AGUARDANDO_PECAS
+  FINALIZADA
+  CANCELADA
+}
+
+// ==========================================
+// USUÁRIOS E AUTENTICAÇÃO
+// ==========================================
+
+model User {
+  id            String    @id @default(cuid())
+  email         String    @unique
+  name          String
+  password      String
+  photo         String?
+  role          Role      @default(COMERCIAL)
+  active        Boolean   @default(true)
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  vendedor      Vendedor?
+  sessions      Session[]
+
+  @@map("users")
+}
+
+model Session {
+  id           String   @id @default(cuid())
+  sessionToken String   @unique
+  userId       String
+  expires      DateTime
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("sessions")
+}
+
+// ==========================================
+// MÓDULO COMERCIAL - VENDEDORES
+// ==========================================
+
+model Vendedor {
+  id            String    @id @default(cuid())
+  userId        String    @unique
+  user          User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  // Cartela de clientes
+  clientes      Cliente[]
+
+  // Rotas semanais
+  rotas         Rota[]
+
+  // Visitas realizadas
+  visitas       Visita[]
+
+  // Propostas emitidas
+  propostas     Proposta[]
+
+  // Laudos de inspeção
+  laudos        Laudo[]
+
+  // Metas de vendas
+  metas         Meta[]
+
+  // Despesas do veículo
+  despesas      Despesa[]
+
+  // Vendas realizadas
+  vendas        Venda[]
+
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  @@map("vendedores")
+}
+
+// ==========================================
+// MÓDULO COMERCIAL - CLIENTES
+// ==========================================
+
+model Cliente {
+  id            String    @id @default(cuid())
+  nome          String
+  razaoSocial   String?
+  cnpj          String?   @unique
+  inscricaoEstadual String?
+
+  // Contato
+  telefone      String?
+  email         String?
+  contatoPrincipal String?
+
+  // Endereço
+  endereco      String?
+  cidade        String?
+  estado        String?
+  cep           String?
+
+  // Relacionamentos
+  vendedorId    String?
+  vendedor      Vendedor? @relation(fields: [vendedorId], references: [id])
+
+  equipamentos  Equipamento[]
+  visitas       Visita[]
+  laudos        Laudo[]
+  propostas     Proposta[]
+  ordensServico OrdemServico[]
+
+  // Rota semanal (dias que deve ser visitado)
+  rotaClientes  RotaCliente[]
+
+  active        Boolean   @default(true)
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  @@map("clientes")
+}
+
+// ==========================================
+// MÓDULO COMERCIAL - EQUIPAMENTOS
+// ==========================================
+
+model Equipamento {
+  id            String    @id @default(cuid())
+
+  // Identificação
+  modelo        String    // SANY 750H, Caterpillar D6, etc
+  marca         String?
+  serie         String    // Número de série
+  frota         String?   // Código da frota do cliente
+
+  // Horímetro
+  horasOperacao Int?
+  horasTranslacao Int?
+
+  // Relacionamentos
+  clienteId     String
+  cliente       Cliente   @relation(fields: [clienteId], references: [id], onDelete: Cascade)
+
+  laudos        Laudo[]
+
+  active        Boolean   @default(true)
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  @@map("equipamentos")
+}
+
+// ==========================================
+// MÓDULO COMERCIAL - ROTAS SEMANAIS
+// ==========================================
+
+model Rota {
+  id            String      @id @default(cuid())
+  nome          String      // "Rota Suelen", "Rota Afonso"
+
+  vendedorId    String
+  vendedor      Vendedor    @relation(fields: [vendedorId], references: [id], onDelete: Cascade)
+
+  rotaClientes  RotaCliente[]
+
+  active        Boolean     @default(true)
+  createdAt     DateTime    @default(now())
+  updatedAt     DateTime    @updatedAt
+
+  @@map("rotas")
+}
+
+model RotaCliente {
+  id            String      @id @default(cuid())
+
+  rotaId        String
+  rota          Rota        @relation(fields: [rotaId], references: [id], onDelete: Cascade)
+
+  clienteId     String
+  cliente       Cliente     @relation(fields: [clienteId], references: [id], onDelete: Cascade)
+
+  diaSemana     DiaSemana
+  ordem         Int         @default(0) // Ordem de visita no dia
+
+  @@unique([rotaId, clienteId, diaSemana])
+  @@map("rota_clientes")
+}
+
+// ==========================================
+// MÓDULO COMERCIAL - VISITAS
+// ==========================================
+
+model Visita {
+  id            String    @id @default(cuid())
+
+  vendedorId    String
+  vendedor      Vendedor  @relation(fields: [vendedorId], references: [id], onDelete: Cascade)
+
+  clienteId     String
+  cliente       Cliente   @relation(fields: [clienteId], references: [id], onDelete: Cascade)
+
+  // Controle de tempo
+  data          DateTime  @db.Date
+  checkIn       DateTime?
+  checkOut      DateTime?
+
+  // Geolocalização
+  latitudeIn    Float?
+  longitudeIn   Float?
+  latitudeOut   Float?
+  longitudeOut  Float?
+
+  // Observações comerciais
+  observacoes   String?   @db.Text
+
+  // Laudo gerado (se houver inspeção)
+  laudo         Laudo?
+
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  @@map("visitas")
+}
+
+// ==========================================
+// MÓDULO COMERCIAL - LAUDOS DE INSPEÇÃO
+// ==========================================
+
+model Laudo {
+  id            String        @id @default(cuid())
+  numero        String        @unique // Número sequencial do laudo
+
+  // Relacionamentos
+  visitaId      String?       @unique
+  visita        Visita?       @relation(fields: [visitaId], references: [id])
+
+  equipamentoId String
+  equipamento   Equipamento   @relation(fields: [equipamentoId], references: [id])
+
+  clienteId     String
+  cliente       Cliente       @relation(fields: [clienteId], references: [id])
+
+  vendedorId    String
+  vendedor      Vendedor      @relation(fields: [vendedorId], references: [id])
+
+  // Dados da inspeção
+  data          DateTime      @db.Date
+  inspetor      String
+  local         String?
+  condicaoSolo  CondicaoSolo
+
+  // Medições detalhadas (JSON estruturado)
+  medicoes      Json          // Array de medições por componente
+
+  // Fotos
+  fotos         LaudoFoto[]
+
+  // Sumário e observações
+  sumario       String?       @db.Text
+
+  // Status
+  status        StatusLaudo   @default(EM_ELABORACAO)
+
+  // Proposta gerada
+  proposta      Proposta?
+
+  createdAt     DateTime      @default(now())
+  updatedAt     DateTime      @updatedAt
+
+  @@map("laudos")
+}
+
+model LaudoFoto {
+  id            String    @id @default(cuid())
+  laudoId       String
+  laudo         Laudo     @relation(fields: [laudoId], references: [id], onDelete: Cascade)
+
+  url           String
+  componente    String    // "FROTA", "ROLETE_SUPERIOR_LE", etc
+  descricao     String?
+
+  createdAt     DateTime  @default(now())
+
+  @@map("laudo_fotos")
+}
+
+// ==========================================
+// MÓDULO COMERCIAL - PROPOSTAS/ORÇAMENTOS
+// ==========================================
+
+model Proposta {
+  id            String          @id @default(cuid())
+  numero        String          @unique // Número sequencial da proposta
+
+  // Relacionamentos
+  laudoId       String?         @unique
+  laudo         Laudo?          @relation(fields: [laudoId], references: [id])
+
+  clienteId     String
+  cliente       Cliente         @relation(fields: [clienteId], references: [id])
+
+  vendedorId    String
+  vendedor      Vendedor        @relation(fields: [vendedorId], references: [id])
+
+  // Valores
+  valor         Decimal         @db.Decimal(12, 2)
+  custoEstimado Decimal?        @db.Decimal(12, 2)
+  margem        Decimal?        @db.Decimal(5, 2) // Percentual
+
+  // Categorias de venda
+  categoria     CategoriaVenda  @default(RODANTE)
+
+  // Datas
+  dataEmissao   DateTime        @default(now())
+  dataValidade  DateTime?
+
+  // Status
+  status        StatusProposta  @default(EM_ABERTO)
+  motivoCancelamento String?
+
+  // Itens da proposta
+  itens         PropostaItem[]
+
+  // Liberação de custo
+  liberacaoCusto LiberacaoCusto?
+
+  // OS gerada
+  ordemServico  OrdemServico?
+
+  createdAt     DateTime        @default(now())
+  updatedAt     DateTime        @updatedAt
+
+  @@map("propostas")
+}
+
+model PropostaItem {
+  id            String    @id @default(cuid())
+  propostaId    String
+  proposta      Proposta  @relation(fields: [propostaId], references: [id], onDelete: Cascade)
+
+  descricao     String
+  quantidade    Int       @default(1)
+  valorUnitario Decimal   @db.Decimal(12, 2)
+  valorTotal    Decimal   @db.Decimal(12, 2)
+
+  @@map("proposta_itens")
+}
+
+// ==========================================
+// MÓDULO COMERCIAL - LIBERAÇÃO DE CUSTO
+// ==========================================
+
+model LiberacaoCusto {
+  id            String              @id @default(cuid())
+
+  propostaId    String              @unique
+  proposta      Proposta            @relation(fields: [propostaId], references: [id], onDelete: Cascade)
+
+  // Análise financeira
+  custoReal     Decimal?            @db.Decimal(12, 2)
+  margemReal    Decimal?            @db.Decimal(5, 2)
+
+  // Aprovação
+  status        StatusLiberacaoCusto @default(EM_ANALISE)
+  aprovadoPor   String?
+  dataAprovacao DateTime?
+  observacoes   String?             @db.Text
+
+  createdAt     DateTime            @default(now())
+  updatedAt     DateTime            @updatedAt
+
+  @@map("liberacoes_custo")
+}
+
+// ==========================================
+// MÓDULO COMERCIAL - ORDEM DE SERVIÇO
+// ==========================================
+
+model OrdemServico {
+  id            String        @id @default(cuid())
+  numero        String        @unique // Número da OS
+
+  // Relacionamentos
+  propostaId    String?       @unique
+  proposta      Proposta?     @relation(fields: [propostaId], references: [id])
+
+  clienteId     String
+  cliente       Cliente       @relation(fields: [clienteId], references: [id])
+
+  // Status
+  status        StatusOS      @default(ABERTA)
+
+  // Datas
+  dataAbertura  DateTime      @default(now())
+  dataPrevisao  DateTime?
+  dataFechamento DateTime?
+
+  // Valores
+  valorTotal    Decimal       @db.Decimal(12, 2)
+
+  // Vendas vinculadas
+  vendas        Venda[]
+
+  createdAt     DateTime      @default(now())
+  updatedAt     DateTime      @updatedAt
+
+  @@map("ordens_servico")
+}
+
+// ==========================================
+// MÓDULO COMERCIAL - VENDAS (METAS)
+// ==========================================
+
+model Venda {
+  id            String        @id @default(cuid())
+
+  vendedorId    String
+  vendedor      Vendedor      @relation(fields: [vendedorId], references: [id])
+
+  ordemServicoId String?
+  ordemServico  OrdemServico? @relation(fields: [ordemServicoId], references: [id])
+
+  // Dados da venda
+  data          DateTime      @db.Date
+  valor         Decimal       @db.Decimal(12, 2)
+  categoria     CategoriaVenda
+
+  // Semana do mês (para controle de metas)
+  semana        Int           // 1, 2, 3 ou 4
+
+  createdAt     DateTime      @default(now())
+  updatedAt     DateTime      @updatedAt
+
+  @@map("vendas")
+}
+
+model Meta {
+  id            String        @id @default(cuid())
+
+  vendedorId    String
+  vendedor      Vendedor      @relation(fields: [vendedorId], references: [id], onDelete: Cascade)
+
+  // Período
+  mes           Int           // 1-12
+  ano           Int
+
+  // Categoria
+  categoria     CategoriaVenda
+
+  // Valores
+  valorMeta     Decimal       @db.Decimal(12, 2)
+
+  createdAt     DateTime      @default(now())
+  updatedAt     DateTime      @updatedAt
+
+  @@unique([vendedorId, mes, ano, categoria])
+  @@map("metas")
+}
+
+// ==========================================
+// MÓDULO COMERCIAL - DESPESAS DO VEÍCULO
+// ==========================================
+
+model Despesa {
+  id            String      @id @default(cuid())
+
+  vendedorId    String
+  vendedor      Vendedor    @relation(fields: [vendedorId], references: [id], onDelete: Cascade)
+
+  // Dados da despesa
+  data          DateTime    @db.Date
+  tipo          TipoDespesa
+  descricao     String?
+  valor         Decimal     @db.Decimal(10, 2)
+  kmVeiculo     Int?
+
+  // Comprovante
+  comprovante   String?     // URL do arquivo
+
+  createdAt     DateTime    @default(now())
+  updatedAt     DateTime    @updatedAt
+
+  @@map("despesas")
+}

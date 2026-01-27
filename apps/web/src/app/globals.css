@@ -1,0 +1,129 @@
+@import 'tailwindcss';
+
+/*
+  Tractus Design System
+  Cores:
+  - Carbon Black: #18181B (fundo)
+  - Bright Amber: #FACC15 (primária/destaque)
+  - Jade Green: #22C55E (sucesso)
+  - Strawberry Red: #EF4444 (erro)
+  - Azure Blue: #3B82F6 (informação)
+*/
+
+@theme inline {
+  /* Cores base do Tractus */
+  --color-background: oklch(0.141 0.005 285.823);
+  --color-foreground: oklch(0.985 0 0);
+
+  --color-card: oklch(0.161 0.005 285.823);
+  --color-card-foreground: oklch(0.985 0 0);
+
+  --color-popover: oklch(0.161 0.005 285.823);
+  --color-popover-foreground: oklch(0.985 0 0);
+
+  /* Primary - Bright Amber #FACC15 */
+  --color-primary: oklch(0.852 0.173 88.176);
+  --color-primary-foreground: oklch(0.141 0.005 285.823);
+
+  /* Secondary */
+  --color-secondary: oklch(0.221 0.006 285.823);
+  --color-secondary-foreground: oklch(0.985 0 0);
+
+  /* Muted */
+  --color-muted: oklch(0.221 0.006 285.823);
+  --color-muted-foreground: oklch(0.708 0.015 286.067);
+
+  /* Accent */
+  --color-accent: oklch(0.221 0.006 285.823);
+  --color-accent-foreground: oklch(0.985 0 0);
+
+  /* Destructive - Strawberry Red #EF4444 */
+  --color-destructive: oklch(0.637 0.237 25.331);
+  --color-destructive-foreground: oklch(0.985 0 0);
+
+  /* Success - Jade Green #22C55E */
+  --color-success: oklch(0.723 0.191 142.495);
+  --color-success-foreground: oklch(0.141 0.005 285.823);
+
+  /* Warning - Bright Amber (similar to primary) */
+  --color-warning: oklch(0.852 0.173 88.176);
+  --color-warning-foreground: oklch(0.141 0.005 285.823);
+
+  /* Info - Azure Blue #3B82F6 */
+  --color-info: oklch(0.623 0.214 259.815);
+  --color-info-foreground: oklch(0.985 0 0);
+
+  /* Border & Input */
+  --color-border: oklch(0.274 0.006 285.823);
+  --color-input: oklch(0.274 0.006 285.823);
+  --color-ring: oklch(0.852 0.173 88.176);
+
+  /* Chart colors */
+  --color-chart-1: oklch(0.852 0.173 88.176);
+  --color-chart-2: oklch(0.723 0.191 142.495);
+  --color-chart-3: oklch(0.637 0.237 25.331);
+  --color-chart-4: oklch(0.623 0.214 259.815);
+  --color-chart-5: oklch(0.708 0.165 332.051);
+
+  /* Sidebar */
+  --color-sidebar: oklch(0.121 0.005 285.823);
+  --color-sidebar-foreground: oklch(0.985 0 0);
+  --color-sidebar-primary: oklch(0.852 0.173 88.176);
+  --color-sidebar-primary-foreground: oklch(0.141 0.005 285.823);
+  --color-sidebar-accent: oklch(0.852 0.173 88.176);
+  --color-sidebar-accent-foreground: oklch(0.141 0.005 285.823);
+  --color-sidebar-border: oklch(0.274 0.006 285.823);
+  --color-sidebar-ring: oklch(0.852 0.173 88.176);
+
+  /* Radius */
+  --radius: 0.5rem;
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+
+  body {
+    @apply bg-background text-foreground antialiased;
+    font-feature-settings: "rlig" 1, "calt" 1;
+  }
+
+  /* Scrollbar customizada para tema escuro */
+  ::-webkit-scrollbar {
+    width: 8px;
+    height: 8px;
+  }
+
+  ::-webkit-scrollbar-track {
+    background: oklch(0.141 0.005 285.823);
+  }
+
+  ::-webkit-scrollbar-thumb {
+    background: oklch(0.274 0.006 285.823);
+    border-radius: 4px;
+  }
+
+  ::-webkit-scrollbar-thumb:hover {
+    background: oklch(0.352 0.006 285.823);
+  }
+}
+
+@layer utilities {
+  /* Status badges */
+  .badge-ok {
+    @apply bg-success/20 text-success border border-success/30;
+  }
+
+  .badge-warning {
+    @apply bg-warning/20 text-warning border border-warning/30;
+  }
+
+  .badge-critical {
+    @apply bg-destructive/20 text-destructive border border-destructive/30;
+  }
+
+  .badge-info {
+    @apply bg-info/20 text-info border border-info/30;
+  }
+}
