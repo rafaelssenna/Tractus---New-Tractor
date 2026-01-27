@@ -71,9 +71,9 @@ export default function LoginPage() {
                 <Image
                   src="/logo.png"
                   alt="Tractus Logo"
-                  width={600}
-                  height={240}
-                  className="h-72 w-auto relative z-10 drop-shadow-[0_0_20px_rgba(250,204,21,0.3)]"
+                  width={800}
+                  height={320}
+                  className="h-96 w-auto relative z-10 drop-shadow-[0_0_20px_rgba(250,204,21,0.3)]"
                   priority
                 />
               </div>
