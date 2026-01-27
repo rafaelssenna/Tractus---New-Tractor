@@ -23,5 +23,5 @@ RUN pnpm build:api
 # Expose port (Railway uses dynamic PORT)
 EXPOSE 3333
 
-# Start API directly with node (faster startup)
-CMD ["node", "apps/api/dist/server.js"]
+# Start API using pnpm (handles workspace module resolution correctly)
+CMD ["pnpm", "start:api"]
