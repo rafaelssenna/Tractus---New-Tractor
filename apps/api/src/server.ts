@@ -10,6 +10,12 @@ const app = fastify({
 // Plugins
 app.register(cors, {
   origin: (origin, cb) => {
+    // Allow requests with no origin (like health checks)
+    if (!origin) {
+      cb(null, true)
+      return
+    }
+
     const allowedOrigins = [
       'http://localhost:3000',
       'http://localhost:3001',
@@ -18,7 +24,12 @@ app.register(cors, {
       'http://127.0.0.1:3001',
       'http://127.0.0.1:3003',
     ]
-    if (!origin || allowedOrigins.includes(origin)) {
+
+    // Allow Railway domains and production domains
+    const isRailwayDomain = origin.includes('.railway.app')
+    const isProductionDomain = origin.includes('newtractor.com.br')
+
+    if (allowedOrigins.includes(origin) || isRailwayDomain || isProductionDomain) {
       cb(null, true)
     } else {
       cb(new Error('Not allowed by CORS'), false)

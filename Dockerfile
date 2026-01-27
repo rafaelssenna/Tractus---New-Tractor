@@ -11,9 +11,6 @@ WORKDIR /app
 # Copy everything
 COPY . .
 
-# Debug: list files to verify copy
-RUN ls -la && ls -la packages/ && ls -la apps/
-
 # Install dependencies
 RUN pnpm install
 
@@ -23,8 +20,8 @@ RUN pnpm db:generate
 # Build API
 RUN pnpm build:api
 
-# Expose port
+# Expose port (Railway uses dynamic PORT)
 EXPOSE 3333
 
-# Start command - db:push runs at startup when DATABASE_URL is available
-CMD ["sh", "-c", "pnpm db:push && pnpm start:api"]
+# Start command - db:push with error handling, then start API
+CMD ["sh", "-c", "pnpm db:push || echo 'db:push failed, continuing...' && pnpm start:api"]
