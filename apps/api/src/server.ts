@@ -26,11 +26,12 @@ app.register(cors, {
       'http://127.0.0.1:3003',
     ]
 
-    // Allow Railway domains (including healthcheck.railway.app) and production domains
+    // Allow Railway, Vercel, and production domains
     const isRailwayDomain = origin.includes('.railway.app') || origin.includes('healthcheck.railway.app')
+    const isVercelDomain = origin.includes('.vercel.app')
     const isProductionDomain = origin.includes('newtractor.com.br')
 
-    if (allowedOrigins.includes(origin) || isRailwayDomain || isProductionDomain) {
+    if (allowedOrigins.includes(origin) || isRailwayDomain || isVercelDomain || isProductionDomain) {
       cb(null, true)
     } else {
       cb(new Error('Not allowed by CORS'), false)
