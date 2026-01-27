@@ -1,6 +1,7 @@
 'use client'
 
 import Link from 'next/link'
+import Image from 'next/image'
 import { usePathname } from 'next/navigation'
 import { cn } from '@/lib/utils'
 import {
@@ -99,15 +100,20 @@ export function Sidebar() {
     >
       {/* Logo */}
       <div className="h-16 flex items-center px-4 border-b border-sidebar-border">
-        <Link href="/dashboard" className="flex items-center gap-3">
-          <div className="w-9 h-9 rounded-lg bg-primary flex items-center justify-center">
-            <span className="text-primary-foreground font-bold text-lg">T</span>
-          </div>
-          {!collapsed && (
-            <div className="flex flex-col">
-              <span className="text-lg font-bold tracking-tight">TRACTUS</span>
-              <span className="text-[10px] text-muted-foreground -mt-1">New Tractor</span>
+        <Link href="/dashboard" className="flex items-center">
+          {collapsed ? (
+            <div className="w-9 h-9 rounded-lg bg-primary flex items-center justify-center">
+              <span className="text-primary-foreground font-bold text-lg">T</span>
             </div>
+          ) : (
+            <Image
+              src="/logo.png"
+              alt="Tractus Logo"
+              width={140}
+              height={56}
+              className="h-12 w-auto"
+              priority
+            />
           )}
         </Link>
       </div>

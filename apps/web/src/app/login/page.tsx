@@ -65,13 +65,13 @@ export default function LoginPage() {
         <div className="relative z-10 flex flex-col justify-center px-12 xl:px-24">
           {/* Logo */}
           <div className="mb-12">
-            <div className="flex items-center gap-4 mb-6">
+            <div className="flex items-center gap-4 mb-8">
               <Image
                 src="/logo.png"
                 alt="Tractus Logo"
-                width={200}
-                height={80}
-                className="h-20 w-auto"
+                width={400}
+                height={160}
+                className="h-40 w-auto"
                 priority
               />
             </div>
@@ -140,9 +140,9 @@ export default function LoginPage() {
             <Image
               src="/logo.png"
               alt="Tractus Logo"
-              width={160}
-              height={64}
-              className="h-16 w-auto mx-auto"
+              width={280}
+              height={112}
+              className="h-28 w-auto mx-auto"
               priority
             />
           </div>
