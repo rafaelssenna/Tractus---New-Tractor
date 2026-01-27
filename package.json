@@ -3,7 +3,12 @@
   "private": true,
   "scripts": {
     "build": "turbo run build",
+    "build:api": "pnpm --filter @tractus/api build",
+    "build:web": "pnpm --filter @tractus/web build",
     "dev": "turbo run dev",
+    "start": "pnpm --filter @tractus/api start",
+    "start:api": "pnpm --filter @tractus/api start",
+    "start:web": "pnpm --filter @tractus/web start",
     "lint": "turbo run lint",
     "check-types": "turbo run check-types",
     "format": "prettier --write \"**/*.{ts,tsx,md}\"",
