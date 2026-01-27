@@ -64,16 +64,19 @@ export default function LoginPage() {
         {/* Content */}
         <div className="relative z-10 flex flex-col justify-center px-12 xl:px-24">
           {/* Logo */}
-          <div className="mb-12">
-            <div className="flex items-center gap-4 mb-8">
-              <Image
-                src="/logo.png"
-                alt="Tractus Logo"
-                width={400}
-                height={160}
-                className="h-40 w-auto"
-                priority
-              />
+          <div className="mb-16">
+            <div className="flex items-center justify-center mb-10">
+              <div className="relative">
+                <div className="absolute inset-0 blur-3xl bg-primary/30 scale-150 rounded-full" />
+                <Image
+                  src="/logo.png"
+                  alt="Tractus Logo"
+                  width={500}
+                  height={200}
+                  className="h-60 w-auto relative z-10 drop-shadow-[0_0_35px_rgba(250,204,21,0.4)]"
+                  priority
+                />
+              </div>
             </div>
             <p className="text-xl text-muted-foreground max-w-md">
               Sistema integrado de gestão para serviços de máquinas pesadas e material rodante
