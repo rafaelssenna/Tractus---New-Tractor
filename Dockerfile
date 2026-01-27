@@ -17,6 +17,9 @@ RUN pnpm install
 # Generate Prisma client
 RUN pnpm db:generate
 
+# Build database package (required by API)
+RUN pnpm --filter @tractus/database build
+
 # Build API
 RUN pnpm build:api
 
