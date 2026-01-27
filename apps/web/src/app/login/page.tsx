@@ -67,13 +67,13 @@ export default function LoginPage() {
           <div className="mb-16">
             <div className="flex items-center justify-center mb-10">
               <div className="relative">
-                <div className="absolute inset-0 blur-3xl bg-primary/30 scale-150 rounded-full" />
+                <div className="absolute inset-0 blur-2xl bg-primary/20 scale-125 rounded-full" />
                 <Image
                   src="/logo.png"
                   alt="Tractus Logo"
-                  width={500}
-                  height={200}
-                  className="h-60 w-auto relative z-10 drop-shadow-[0_0_35px_rgba(250,204,21,0.4)]"
+                  width={600}
+                  height={240}
+                  className="h-72 w-auto relative z-10 drop-shadow-[0_0_20px_rgba(250,204,21,0.3)]"
                   priority
                 />
               </div>
