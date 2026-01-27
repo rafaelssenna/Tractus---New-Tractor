@@ -1,0 +1,11 @@
+[phases.setup]
+nixPkgs = ["nodejs_22", "pnpm", "openssl"]
+
+[phases.install]
+cmds = ["pnpm install --frozen-lockfile"]
+
+[phases.build]
+cmds = ["pnpm db:generate", "pnpm build:api"]
+
+[start]
+cmd = "pnpm db:push && pnpm start:api"
