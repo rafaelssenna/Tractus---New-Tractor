@@ -446,7 +446,7 @@ export default function PropostasPage() {
                 </thead>
                 <tbody className="divide-y divide-border">
                   {propostas.map((proposta) => {
-                    const statusInfo = statusConfig[proposta.status]
+                    const statusInfo = statusConfig[proposta.status] ?? statusConfig.EM_ABERTO
                     const StatusIcon = statusInfo.icon
                     return (
                       <tr key={proposta.id} className="hover:bg-muted/30 transition-colors">
