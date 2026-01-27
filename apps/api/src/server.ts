@@ -5,12 +5,13 @@ import { routes } from './routes'
 
 const app = fastify({
   logger: true,
+  trustProxy: true, // Trust Railway's proxy
 })
 
 // Plugins
 app.register(cors, {
   origin: (origin, cb) => {
-    // Allow requests with no origin (like health checks)
+    // Allow requests with no origin (like health checks from Railway)
     if (!origin) {
       cb(null, true)
       return
@@ -25,8 +26,8 @@ app.register(cors, {
       'http://127.0.0.1:3003',
     ]
 
-    // Allow Railway domains and production domains
-    const isRailwayDomain = origin.includes('.railway.app')
+    // Allow Railway domains (including healthcheck.railway.app) and production domains
+    const isRailwayDomain = origin.includes('.railway.app') || origin.includes('healthcheck.railway.app')
     const isProductionDomain = origin.includes('newtractor.com.br')
 
     if (allowedOrigins.includes(origin) || isRailwayDomain || isProductionDomain) {
