@@ -205,7 +205,7 @@ export default function PropostasPage() {
       valor: proposta.valor.toString(),
       custoEstimado: proposta.custoEstimado?.toString() || '',
       categoria: proposta.categoria,
-      dataValidade: proposta.dataValidade ? proposta.dataValidade.split('T')[0] : '',
+      dataValidade: proposta.dataValidade ? proposta.dataValidade.split('T')[0] ?? '' : '',
     })
     setShowViewModal(false)
     setShowModal(true)
