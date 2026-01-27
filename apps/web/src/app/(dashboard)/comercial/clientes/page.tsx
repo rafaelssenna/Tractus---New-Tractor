@@ -184,7 +184,7 @@ export default function ClientesPage() {
       // Pegar nome do primeiro sócio como contato principal
       let contatoPrincipal = ''
       if (data.qsa && data.qsa.length > 0) {
-        contatoPrincipal = data.qsa[0].nome_socio
+        contatoPrincipal = data.qsa[0]?.nome_socio || ''
       }
 
       setFormData({
