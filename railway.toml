@@ -1,6 +1,6 @@
 [build]
 builder = "nixpacks"
-buildCommand = "pnpm install && pnpm db:generate && pnpm build:api"
+buildCommand = "pnpm install && pnpm db:generate && pnpm db:push && pnpm build:api"
 
 [deploy]
 startCommand = "pnpm start:api"
