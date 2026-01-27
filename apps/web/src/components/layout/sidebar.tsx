@@ -101,20 +101,20 @@ export function Sidebar() {
       {/* Logo */}
       <div className={cn(
         "flex items-center justify-center border-b border-sidebar-border",
-        collapsed ? "h-20 px-2" : "h-24 px-3"
+        collapsed ? "h-24 px-2" : "h-40 px-3"
       )}>
         <Link href="/dashboard" className="flex items-center justify-center">
           {collapsed ? (
-            <div className="w-12 h-12 rounded-lg bg-primary flex items-center justify-center">
-              <span className="text-primary-foreground font-bold text-2xl">T</span>
+            <div className="w-14 h-14 rounded-lg bg-primary flex items-center justify-center">
+              <span className="text-primary-foreground font-bold text-3xl">T</span>
             </div>
           ) : (
             <Image
               src="/logo.png"
               alt="Tractus Logo"
-              width={220}
-              height={88}
-              className="h-[4.5rem] w-auto"
+              width={240}
+              height={140}
+              className="h-32 w-auto"
               priority
             />
           )}
