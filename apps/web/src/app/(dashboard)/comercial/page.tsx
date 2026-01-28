@@ -14,6 +14,9 @@ import {
   MapPin,
   ChevronRight,
   Loader2,
+  Route,
+  CheckCircle,
+  Circle,
 } from 'lucide-react'
 import Link from 'next/link'
 import {
@@ -52,13 +55,39 @@ interface Visita {
   vendedor: { user: { name: string } }
 }
 
+interface ClienteRota {
+  id: string
+  nome: string
+  cidade?: string
+  ordem: number
+  visita: {
+    id: string
+    status: string
+    checkIn?: string
+    checkOut?: string
+  } | null
+}
+
+interface RotaDoDia {
+  vendedorId: string
+  vendedorNome: string
+  diaSemana: string
+  clientesProgramados: ClienteRota[]
+  estatisticas: {
+    programadas: number
+    realizadas: number
+    pendentes: number
+  }
+}
+
 export default function ComercialPage() {
   const [loading, setLoading] = useState(true)
   const [vendedores, setVendedores] = useState<Vendedor[]>([])
   const [clientesCount, setClientesCount] = useState(0)
   const [propostasPendentes, setPropostasPendentes] = useState(0)
   const [metasDashboard, setMetasDashboard] = useState<MetaDashboard | null>(null)
-  const [visitasSemana, setVisitasSemana] = useState<Visita[]>([])
+  const [rotasHoje, setRotasHoje] = useState<RotaDoDia[]>([])
+  const [proximasVisitas, setProximasVisitas] = useState<Visita[]>([])
 
   useEffect(() => {
     fetchData()
@@ -68,28 +97,26 @@ export default function ComercialPage() {
     try {
       const apiUrl = process.env.NEXT_PUBLIC_API_URL
 
-      // Calcular início e fim da semana atual
+      // Calcular datas
       const hoje = new Date()
-      const diaSemana = hoje.getDay()
-      const inicioSemana = new Date(hoje)
-      inicioSemana.setDate(hoje.getDate() - diaSemana)
-      inicioSemana.setHours(0, 0, 0, 0)
-      const fimSemana = new Date(inicioSemana)
-      fimSemana.setDate(inicioSemana.getDate() + 6)
-      fimSemana.setHours(23, 59, 59, 999)
+      const amanha = new Date(hoje)
+      amanha.setDate(hoje.getDate() + 1)
+      const fimSemana = new Date(hoje)
+      fimSemana.setDate(hoje.getDate() + 7)
 
-      // Buscar dados em paralelo
-      const [vendedoresRes, clientesRes, propostasRes, metasRes, visitasRes] = await Promise.all([
+      // Buscar dados básicos em paralelo
+      const [vendedoresRes, clientesRes, propostasRes, metasRes] = await Promise.all([
         fetch(`${apiUrl}/vendedores`),
         fetch(`${apiUrl}/clientes`),
         fetch(`${apiUrl}/propostas?status=EM_ABERTO`),
         fetch(`${apiUrl}/metas/dashboard`),
-        fetch(`${apiUrl}/visitas?dataInicio=${inicioSemana.toISOString().split('T')[0]}&dataFim=${fimSemana.toISOString().split('T')[0]}&limit=10`),
       ])
 
+      let vendedoresList: Vendedor[] = []
+
       if (vendedoresRes.ok) {
-        const data = await vendedoresRes.json()
-        setVendedores(data)
+        vendedoresList = await vendedoresRes.json()
+        setVendedores(vendedoresList)
       }
 
       if (clientesRes.ok) {
@@ -107,9 +134,39 @@ export default function ComercialPage() {
         setMetasDashboard(data)
       }
 
+      // Buscar rota do dia para cada vendedor
+      if (vendedoresList.length > 0) {
+        const rotasPromises = vendedoresList.map(async (v) => {
+          try {
+            const res = await fetch(`${apiUrl}/visitas/rota-do-dia?vendedorId=${v.id}`)
+            if (res.ok) {
+              const data = await res.json()
+              return {
+                vendedorId: v.id,
+                vendedorNome: v.user.name,
+                diaSemana: data.diaSemana,
+                clientesProgramados: data.clientesProgramados || [],
+                estatisticas: data.estatisticas || { programadas: 0, realizadas: 0, pendentes: 0 },
+              }
+            }
+          } catch (e) {
+            console.error(`Erro ao buscar rota do vendedor ${v.id}:`, e)
+          }
+          return null
+        })
+
+        const rotasResults = await Promise.all(rotasPromises)
+        const rotasValidas = rotasResults.filter((r): r is RotaDoDia => r !== null && r.clientesProgramados.length > 0)
+        setRotasHoje(rotasValidas)
+      }
+
+      // Buscar próximas visitas (a partir de amanhã)
+      const visitasRes = await fetch(
+        `${apiUrl}/visitas?dataInicio=${amanha.toISOString().split('T')[0]}&dataFim=${fimSemana.toISOString().split('T')[0]}&limit=5`
+      )
       if (visitasRes.ok) {
         const data = await visitasRes.json()
-        setVisitasSemana(data)
+        setProximasVisitas(data)
       }
     } catch (error) {
       console.error('Erro ao carregar dados:', error)
@@ -123,6 +180,10 @@ export default function ComercialPage() {
   const faturamentoMes = metasDashboard?.vendedores.reduce((acc, v) => acc + v.vendidoTotal, 0) || 0
   const metaTotal = metasDashboard?.vendedores.reduce((acc, v) => acc + v.metaTotal, 0) || 0
   const percentualMeta = metaTotal > 0 ? Math.round((faturamentoMes / metaTotal) * 100) : 0
+
+  // Totais da rota de hoje
+  const totalProgramadas = rotasHoje.reduce((acc, r) => acc + r.estatisticas.programadas, 0)
+  const totalRealizadas = rotasHoje.reduce((acc, r) => acc + r.estatisticas.realizadas, 0)
 
   const formatCurrency = (value: number) => {
     if (value >= 1000000) {
@@ -356,38 +417,100 @@ export default function ComercialPage() {
             </CardContent>
           </Card>
 
-          {/* Visitas da Semana */}
+          {/* Rota de Hoje */}
           <Card className="border-border/50">
             <CardHeader className="pb-2">
               <div className="flex items-center justify-between">
-                <CardTitle className="text-lg">Visitas da Semana</CardTitle>
-                <Link href="/comercial/rotas">
+                <CardTitle className="text-lg flex items-center gap-2">
+                  <Route className="w-4 h-4 text-primary" />
+                  Rota de Hoje
+                </CardTitle>
+                {totalProgramadas > 0 && (
+                  <Badge variant="outline" className="text-[10px]">
+                    {totalRealizadas}/{totalProgramadas}
+                  </Badge>
+                )}
+              </div>
+            </CardHeader>
+            <CardContent>
+              {rotasHoje.length > 0 ? (
+                <div className="space-y-4">
+                  {rotasHoje.map((rota) => (
+                    <div key={rota.vendedorId}>
+                      <p className="text-xs font-medium text-muted-foreground mb-2">{rota.vendedorNome}</p>
+                      <div className="space-y-2">
+                        {rota.clientesProgramados.slice(0, 3).map((cliente) => (
+                          <div
+                            key={cliente.id}
+                            className={`flex items-center gap-2 p-2 rounded-lg ${
+                              cliente.visita?.status === 'concluida'
+                                ? 'bg-success/10 border border-success/20'
+                                : cliente.visita?.status === 'em_andamento'
+                                  ? 'bg-primary/10 border border-primary/20'
+                                  : 'border border-border/50'
+                            }`}
+                          >
+                            {cliente.visita?.status === 'concluida' ? (
+                              <CheckCircle className="w-4 h-4 text-success shrink-0" />
+                            ) : (
+                              <Circle className="w-4 h-4 text-muted-foreground shrink-0" />
+                            )}
+                            <span className="text-sm truncate">{cliente.nome}</span>
+                          </div>
+                        ))}
+                        {rota.clientesProgramados.length > 3 && (
+                          <p className="text-xs text-muted-foreground text-center">
+                            +{rota.clientesProgramados.length - 3} clientes
+                          </p>
+                        )}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <div className="py-6 flex flex-col items-center justify-center text-center">
+                  <Route className="w-8 h-8 text-muted-foreground mb-2 opacity-50" />
+                  <p className="text-muted-foreground text-sm">Nenhuma rota para hoje</p>
+                  <Link href="/comercial/rotas">
+                    <Button variant="link" size="sm" className="text-xs mt-1">
+                      Configurar rotas
+                    </Button>
+                  </Link>
+                </div>
+              )}
+            </CardContent>
+          </Card>
+
+          {/* Próximas Visitas */}
+          <Card className="border-border/50">
+            <CardHeader className="pb-2">
+              <div className="flex items-center justify-between">
+                <CardTitle className="text-lg flex items-center gap-2">
+                  <Calendar className="w-4 h-4 text-info" />
+                  Próximas Visitas
+                </CardTitle>
+                <Link href="/comercial/visitas">
                   <Button variant="ghost" size="sm" className="text-xs">
-                    Ver rota
+                    Ver todas
                     <ChevronRight className="w-3 h-3 ml-1" />
                   </Button>
                 </Link>
               </div>
             </CardHeader>
             <CardContent>
-              {visitasSemana.length > 0 ? (
+              {proximasVisitas.length > 0 ? (
                 <div className="space-y-3">
-                  {visitasSemana.map((visita) => {
+                  {proximasVisitas.map((visita) => {
                     const visitaDate = new Date(visita.data)
-                    const hoje = new Date()
-                    const isHoje = visitaDate.toDateString() === hoje.toDateString()
                     return (
                       <div
                         key={visita.id}
-                        className={`p-3 rounded-lg border ${isHoje ? 'border-primary/50 bg-primary/5' : 'border-border/50'}`}
+                        className="p-3 rounded-lg border border-border/50"
                       >
                         <div className="flex items-center justify-between mb-1">
                           <span className="font-medium text-sm">{visita.cliente.nome}</span>
-                          <Badge
-                            variant={isHoje ? 'default' : 'outline'}
-                            className={isHoje ? 'bg-primary text-primary-foreground text-[10px]' : 'text-[10px]'}
-                          >
-                            {isHoje ? 'Hoje' : visitaDate.toLocaleDateString('pt-BR', { weekday: 'short', day: '2-digit' })}
+                          <Badge variant="outline" className="text-[10px]">
+                            {visitaDate.toLocaleDateString('pt-BR', { weekday: 'short', day: '2-digit' })}
                           </Badge>
                         </div>
                         <p className="text-xs text-muted-foreground">{visita.vendedor.user.name}</p>
@@ -396,9 +519,14 @@ export default function ComercialPage() {
                   })}
                 </div>
               ) : (
-                <div className="py-8 flex flex-col items-center justify-center text-center">
-                  <MapPin className="w-8 h-8 text-muted-foreground mb-2" />
-                  <p className="text-muted-foreground text-sm">Nenhuma visita esta semana</p>
+                <div className="py-6 flex flex-col items-center justify-center text-center">
+                  <MapPin className="w-8 h-8 text-muted-foreground mb-2 opacity-50" />
+                  <p className="text-muted-foreground text-sm">Nenhuma visita agendada</p>
+                  <Link href="/comercial/visitas">
+                    <Button variant="link" size="sm" className="text-xs mt-1">
+                      Agendar visita
+                    </Button>
+                  </Link>
                 </div>
               )}
             </CardContent>
