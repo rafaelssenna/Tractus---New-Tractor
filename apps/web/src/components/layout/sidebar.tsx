@@ -238,11 +238,11 @@ export function Sidebar() {
         {!collapsed ? (
           <div className="space-y-2">
             <Link
-              href="/configuracoes"
+              href="/configuracoes/usuarios"
               className="flex items-center gap-3 px-3 py-2 rounded-lg text-muted-foreground hover:bg-sidebar-accent/50 hover:text-foreground transition-colors"
             >
-              <Settings className="w-5 h-5" />
-              <span className="text-sm">Configurações</span>
+              <Users className="w-5 h-5" />
+              <span className="text-sm">Usuários</span>
             </Link>
             <div className="flex items-center gap-3 px-3 py-3 rounded-lg bg-muted/30">
               <div className="w-9 h-9 rounded-full bg-primary/20 flex items-center justify-center">
@@ -260,10 +260,10 @@ export function Sidebar() {
         ) : (
           <div className="space-y-2">
             <Link
-              href="/configuracoes"
+              href="/configuracoes/usuarios"
               className="flex items-center justify-center p-2.5 rounded-lg text-muted-foreground hover:bg-sidebar-accent/50 hover:text-foreground transition-colors"
             >
-              <Settings className="w-5 h-5" />
+              <Users className="w-5 h-5" />
             </Link>
             <div className="flex items-center justify-center p-2">
               <div className="w-9 h-9 rounded-full bg-primary/20 flex items-center justify-center">
