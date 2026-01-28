@@ -17,6 +17,8 @@ import {
   Route,
   CheckCircle,
   Circle,
+  Clock,
+  Building2,
 } from 'lucide-react'
 import Link from 'next/link'
 import {
@@ -162,7 +164,7 @@ export default function ComercialPage() {
 
       // Buscar próximas visitas (a partir de amanhã)
       const visitasRes = await fetch(
-        `${apiUrl}/visitas?dataInicio=${amanha.toISOString().split('T')[0]}&dataFim=${fimSemana.toISOString().split('T')[0]}&limit=5`
+        `${apiUrl}/visitas?dataInicio=${amanha.toISOString().split('T')[0]}&dataFim=${fimSemana.toISOString().split('T')[0]}&limit=10`
       )
       if (visitasRes.ok) {
         const data = await visitasRes.json()
@@ -184,6 +186,11 @@ export default function ComercialPage() {
   // Totais da rota de hoje
   const totalProgramadas = rotasHoje.reduce((acc, r) => acc + r.estatisticas.programadas, 0)
   const totalRealizadas = rotasHoje.reduce((acc, r) => acc + r.estatisticas.realizadas, 0)
+
+  // Dia da semana atual
+  const diasSemana = ['Domingo', 'Segunda-feira', 'Terça-feira', 'Quarta-feira', 'Quinta-feira', 'Sexta-feira', 'Sábado']
+  const hoje = new Date()
+  const diaSemanaAtual = diasSemana[hoje.getDay()]
 
   const formatCurrency = (value: number) => {
     if (value >= 1000000) {
@@ -294,25 +301,35 @@ export default function ComercialPage() {
         ))}
       </div>
 
-      {/* Content */}
+      {/* Metas + Gráfico */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         {/* Metas por Vendedor */}
-        <div className="lg:col-span-2 space-y-4">
-          <h3 className="text-lg font-semibold">Metas por Vendedor</h3>
-          <Card className="border-border/50">
-            {vendedores.length === 0 ? (
-              <CardContent className="p-8 flex flex-col items-center justify-center text-center">
-                <Users className="w-12 h-12 text-muted-foreground mb-4" />
-                <p className="text-muted-foreground">Nenhum vendedor cadastrado</p>
+        <div className="lg:col-span-2">
+          <Card className="border-border/50 h-full">
+            <CardHeader className="pb-2">
+              <div className="flex items-center justify-between">
+                <CardTitle className="text-lg">Metas por Vendedor</CardTitle>
                 <Link href="/comercial/vendedores">
-                  <Button variant="outline" size="sm" className="mt-4">
-                    <Plus className="w-4 h-4 mr-2" />
-                    Adicionar Vendedor
+                  <Button variant="ghost" size="sm" className="text-xs">
+                    Ver vendedores
+                    <ChevronRight className="w-3 h-3 ml-1" />
                   </Button>
                 </Link>
-              </CardContent>
-            ) : (
-              <CardContent className="p-4">
+              </div>
+            </CardHeader>
+            <CardContent>
+              {vendedores.length === 0 ? (
+                <div className="py-8 flex flex-col items-center justify-center text-center">
+                  <Users className="w-12 h-12 text-muted-foreground mb-4 opacity-20" />
+                  <p className="text-muted-foreground">Nenhum vendedor cadastrado</p>
+                  <Link href="/comercial/vendedores">
+                    <Button variant="outline" size="sm" className="mt-4">
+                      <Plus className="w-4 h-4 mr-2" />
+                      Adicionar Vendedor
+                    </Button>
+                  </Link>
+                </div>
+              ) : (
                 <div className="space-y-4">
                   {metasDashboard?.vendedores.map((v) => (
                     <div key={v.vendedor.id} className="p-4 rounded-lg border border-border/50">
@@ -369,169 +386,243 @@ export default function ComercialPage() {
                     </div>
                   )}
                 </div>
-              </CardContent>
-            )}
+              )}
+            </CardContent>
           </Card>
         </div>
 
-        {/* Sidebar */}
-        <div className="space-y-6">
-          {/* Gráfico de Metas */}
-          <Card className="border-border/50">
-            <CardHeader className="pb-2">
-              <CardTitle className="text-lg">Meta vs Realizado</CardTitle>
-            </CardHeader>
-            <CardContent>
-              {metasDashboard && metasDashboard.vendedores.length > 0 ? (
-                <div className="h-48">
-                  <ResponsiveContainer width="100%" height="100%">
-                    <BarChart
-                      data={metasDashboard.vendedores.map(v => ({
-                        name: v.vendedor.name.split(' ')[0],
-                        meta: v.metaTotal / 1000,
-                        realizado: v.vendidoTotal / 1000,
-                      }))}
-                      margin={{ top: 10, right: 10, left: -20, bottom: 0 }}
-                    >
-                      <CartesianGrid strokeDasharray="3 3" stroke="#27272A" />
-                      <XAxis dataKey="name" stroke="#71717A" fontSize={11} tickLine={false} />
-                      <YAxis stroke="#71717A" fontSize={11} tickLine={false} tickFormatter={(v) => `${v}k`} />
-                      <Tooltip
-                        contentStyle={{
-                          backgroundColor: '#18181B',
-                          border: '1px solid #27272A',
-                          borderRadius: '8px',
-                        }}
-                        formatter={(value: number) => [`R$ ${value.toFixed(0)}k`, '']}
-                      />
-                      <Bar dataKey="meta" fill="#3B82F6" radius={[4, 4, 0, 0]} name="Meta" />
-                      <Bar dataKey="realizado" fill="#22C55E" radius={[4, 4, 0, 0]} name="Realizado" />
-                    </BarChart>
-                  </ResponsiveContainer>
-                </div>
-              ) : (
-                <div className="h-48 flex items-center justify-center">
-                  <p className="text-muted-foreground text-sm">Sem dados para exibir</p>
-                </div>
-              )}
-            </CardContent>
-          </Card>
+        {/* Gráfico de Metas */}
+        <Card className="border-border/50">
+          <CardHeader className="pb-2">
+            <CardTitle className="text-lg">Meta vs Realizado</CardTitle>
+          </CardHeader>
+          <CardContent>
+            {metasDashboard && metasDashboard.vendedores.length > 0 ? (
+              <div className="h-64">
+                <ResponsiveContainer width="100%" height="100%">
+                  <BarChart
+                    data={metasDashboard.vendedores.map(v => ({
+                      name: v.vendedor.name.split(' ')[0],
+                      meta: v.metaTotal / 1000,
+                      realizado: v.vendidoTotal / 1000,
+                    }))}
+                    margin={{ top: 10, right: 10, left: -20, bottom: 0 }}
+                  >
+                    <CartesianGrid strokeDasharray="3 3" stroke="#27272A" />
+                    <XAxis dataKey="name" stroke="#71717A" fontSize={11} tickLine={false} />
+                    <YAxis stroke="#71717A" fontSize={11} tickLine={false} tickFormatter={(v) => `${v}k`} />
+                    <Tooltip
+                      contentStyle={{
+                        backgroundColor: '#18181B',
+                        border: '1px solid #27272A',
+                        borderRadius: '8px',
+                      }}
+                      formatter={(value: number) => [`R$ ${value.toFixed(0)}k`, '']}
+                    />
+                    <Bar dataKey="meta" fill="#3B82F6" radius={[4, 4, 0, 0]} name="Meta" />
+                    <Bar dataKey="realizado" fill="#22C55E" radius={[4, 4, 0, 0]} name="Realizado" />
+                  </BarChart>
+                </ResponsiveContainer>
+              </div>
+            ) : (
+              <div className="h-64 flex items-center justify-center">
+                <p className="text-muted-foreground text-sm">Sem dados para exibir</p>
+              </div>
+            )}
+          </CardContent>
+        </Card>
+      </div>
 
-          {/* Rota de Hoje */}
-          <Card className="border-border/50">
-            <CardHeader className="pb-2">
-              <div className="flex items-center justify-between">
+      {/* Rota de Hoje + Próximas Visitas */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        {/* Rota de Hoje */}
+        <Card className="border-border/50">
+          <CardHeader className="pb-2">
+            <div className="flex items-center justify-between">
+              <div>
                 <CardTitle className="text-lg flex items-center gap-2">
-                  <Route className="w-4 h-4 text-primary" />
+                  <Route className="w-5 h-5 text-primary" />
                   Rota de Hoje
                 </CardTitle>
+                <p className="text-xs text-muted-foreground mt-1">{diaSemanaAtual}, {hoje.toLocaleDateString('pt-BR')}</p>
+              </div>
+              <div className="flex items-center gap-2">
                 {totalProgramadas > 0 && (
-                  <Badge variant="outline" className="text-[10px]">
-                    {totalRealizadas}/{totalProgramadas}
+                  <Badge className="bg-primary/20 text-primary">
+                    {totalRealizadas}/{totalProgramadas} visitas
                   </Badge>
                 )}
-              </div>
-            </CardHeader>
-            <CardContent>
-              {rotasHoje.length > 0 ? (
-                <div className="space-y-4">
-                  {rotasHoje.map((rota) => (
-                    <div key={rota.vendedorId}>
-                      <p className="text-xs font-medium text-muted-foreground mb-2">{rota.vendedorNome}</p>
-                      <div className="space-y-2">
-                        {rota.clientesProgramados.slice(0, 3).map((cliente) => (
-                          <div
-                            key={cliente.id}
-                            className={`flex items-center gap-2 p-2 rounded-lg ${
-                              cliente.visita?.status === 'concluida'
-                                ? 'bg-success/10 border border-success/20'
-                                : cliente.visita?.status === 'em_andamento'
-                                  ? 'bg-primary/10 border border-primary/20'
-                                  : 'border border-border/50'
-                            }`}
-                          >
-                            {cliente.visita?.status === 'concluida' ? (
-                              <CheckCircle className="w-4 h-4 text-success shrink-0" />
-                            ) : (
-                              <Circle className="w-4 h-4 text-muted-foreground shrink-0" />
-                            )}
-                            <span className="text-sm truncate">{cliente.nome}</span>
-                          </div>
-                        ))}
-                        {rota.clientesProgramados.length > 3 && (
-                          <p className="text-xs text-muted-foreground text-center">
-                            +{rota.clientesProgramados.length - 3} clientes
-                          </p>
-                        )}
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              ) : (
-                <div className="py-6 flex flex-col items-center justify-center text-center">
-                  <Route className="w-8 h-8 text-muted-foreground mb-2 opacity-50" />
-                  <p className="text-muted-foreground text-sm">Nenhuma rota para hoje</p>
-                  <Link href="/comercial/rotas">
-                    <Button variant="link" size="sm" className="text-xs mt-1">
-                      Configurar rotas
-                    </Button>
-                  </Link>
-                </div>
-              )}
-            </CardContent>
-          </Card>
-
-          {/* Próximas Visitas */}
-          <Card className="border-border/50">
-            <CardHeader className="pb-2">
-              <div className="flex items-center justify-between">
-                <CardTitle className="text-lg flex items-center gap-2">
-                  <Calendar className="w-4 h-4 text-info" />
-                  Próximas Visitas
-                </CardTitle>
-                <Link href="/comercial/visitas">
+                <Link href="/comercial/rotas">
                   <Button variant="ghost" size="sm" className="text-xs">
-                    Ver todas
+                    Ver rotas
                     <ChevronRight className="w-3 h-3 ml-1" />
                   </Button>
                 </Link>
               </div>
-            </CardHeader>
-            <CardContent>
-              {proximasVisitas.length > 0 ? (
-                <div className="space-y-3">
-                  {proximasVisitas.map((visita) => {
-                    const visitaDate = new Date(visita.data)
-                    return (
-                      <div
-                        key={visita.id}
-                        className="p-3 rounded-lg border border-border/50"
-                      >
-                        <div className="flex items-center justify-between mb-1">
-                          <span className="font-medium text-sm">{visita.cliente.nome}</span>
-                          <Badge variant="outline" className="text-[10px]">
-                            {visitaDate.toLocaleDateString('pt-BR', { weekday: 'short', day: '2-digit' })}
+            </div>
+          </CardHeader>
+          <CardContent>
+            {rotasHoje.length > 0 ? (
+              <div className="space-y-4">
+                {rotasHoje.map((rota) => (
+                  <div key={rota.vendedorId} className="border border-border/50 rounded-lg overflow-hidden">
+                    <div className="bg-muted/30 px-4 py-2 flex items-center justify-between">
+                      <div className="flex items-center gap-2">
+                        <div className="w-7 h-7 rounded-full bg-primary/20 flex items-center justify-center">
+                          <span className="text-xs font-bold text-primary">
+                            {rota.vendedorNome.charAt(0)}
+                          </span>
+                        </div>
+                        <span className="font-medium text-sm">{rota.vendedorNome}</span>
+                      </div>
+                      <Badge variant="outline" className="text-[10px]">
+                        {rota.estatisticas.realizadas}/{rota.estatisticas.programadas}
+                      </Badge>
+                    </div>
+                    <div className="divide-y divide-border/50">
+                      {rota.clientesProgramados.map((cliente) => (
+                        <div
+                          key={cliente.id}
+                          className={`px-4 py-3 flex items-center justify-between ${
+                            cliente.visita?.status === 'concluida' ? 'bg-success/5' : ''
+                          }`}
+                        >
+                          <div className="flex items-center gap-3">
+                            {cliente.visita?.status === 'concluida' ? (
+                              <CheckCircle className="w-5 h-5 text-success" />
+                            ) : cliente.visita?.status === 'em_andamento' ? (
+                              <Clock className="w-5 h-5 text-primary animate-pulse" />
+                            ) : (
+                              <Circle className="w-5 h-5 text-muted-foreground" />
+                            )}
+                            <div>
+                              <p className="font-medium text-sm">{cliente.nome}</p>
+                              {cliente.cidade && (
+                                <p className="text-xs text-muted-foreground flex items-center gap-1">
+                                  <MapPin className="w-3 h-3" />
+                                  {cliente.cidade}
+                                </p>
+                              )}
+                            </div>
+                          </div>
+                          <Badge
+                            variant="outline"
+                            className={`text-[10px] ${
+                              cliente.visita?.status === 'concluida'
+                                ? 'border-success/50 text-success'
+                                : cliente.visita?.status === 'em_andamento'
+                                  ? 'border-primary/50 text-primary'
+                                  : ''
+                            }`}
+                          >
+                            {cliente.visita?.status === 'concluida'
+                              ? 'Concluída'
+                              : cliente.visita?.status === 'em_andamento'
+                                ? 'Em andamento'
+                                : 'Pendente'}
                           </Badge>
                         </div>
-                        <p className="text-xs text-muted-foreground">{visita.vendedor.user.name}</p>
-                      </div>
-                    )
-                  })}
-                </div>
-              ) : (
-                <div className="py-6 flex flex-col items-center justify-center text-center">
-                  <MapPin className="w-8 h-8 text-muted-foreground mb-2 opacity-50" />
-                  <p className="text-muted-foreground text-sm">Nenhuma visita agendada</p>
-                  <Link href="/comercial/visitas">
-                    <Button variant="link" size="sm" className="text-xs mt-1">
-                      Agendar visita
-                    </Button>
-                  </Link>
-                </div>
-              )}
-            </CardContent>
-          </Card>
-        </div>
+                      ))}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <div className="py-12 flex flex-col items-center justify-center text-center">
+                <Route className="w-12 h-12 text-muted-foreground mb-3 opacity-20" />
+                <p className="text-muted-foreground">Nenhuma rota configurada para hoje</p>
+                <p className="text-xs text-muted-foreground mt-1">Configure as rotas semanais dos vendedores</p>
+                <Link href="/comercial/rotas">
+                  <Button variant="outline" size="sm" className="mt-4">
+                    Configurar rotas
+                  </Button>
+                </Link>
+              </div>
+            )}
+          </CardContent>
+        </Card>
+
+        {/* Próximas Visitas */}
+        <Card className="border-border/50">
+          <CardHeader className="pb-2">
+            <div className="flex items-center justify-between">
+              <div>
+                <CardTitle className="text-lg flex items-center gap-2">
+                  <Calendar className="w-5 h-5 text-info" />
+                  Próximas Visitas
+                </CardTitle>
+                <p className="text-xs text-muted-foreground mt-1">Agendamentos dos próximos 7 dias</p>
+              </div>
+              <Link href="/comercial/visitas">
+                <Button variant="ghost" size="sm" className="text-xs">
+                  Ver todas
+                  <ChevronRight className="w-3 h-3 ml-1" />
+                </Button>
+              </Link>
+            </div>
+          </CardHeader>
+          <CardContent>
+            {proximasVisitas.length > 0 ? (
+              <div className="border border-border/50 rounded-lg overflow-hidden">
+                <table className="w-full">
+                  <thead>
+                    <tr className="bg-muted/30 text-xs text-muted-foreground">
+                      <th className="text-left px-4 py-2 font-medium">Data</th>
+                      <th className="text-left px-4 py-2 font-medium">Cliente</th>
+                      <th className="text-left px-4 py-2 font-medium">Vendedor</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-border/50">
+                    {proximasVisitas.map((visita) => {
+                      const visitaDate = new Date(visita.data)
+                      return (
+                        <tr key={visita.id} className="hover:bg-muted/20">
+                          <td className="px-4 py-3">
+                            <div className="flex items-center gap-2">
+                              <div className="text-center">
+                                <p className="text-xs text-muted-foreground">
+                                  {visitaDate.toLocaleDateString('pt-BR', { weekday: 'short' })}
+                                </p>
+                                <p className="text-lg font-bold text-primary">
+                                  {visitaDate.getDate()}
+                                </p>
+                              </div>
+                            </div>
+                          </td>
+                          <td className="px-4 py-3">
+                            <div className="flex items-center gap-2">
+                              <Building2 className="w-4 h-4 text-muted-foreground" />
+                              <div>
+                                <p className="font-medium text-sm">{visita.cliente.nome}</p>
+                                {visita.cliente.cidade && (
+                                  <p className="text-xs text-muted-foreground">{visita.cliente.cidade}</p>
+                                )}
+                              </div>
+                            </div>
+                          </td>
+                          <td className="px-4 py-3">
+                            <span className="text-sm">{visita.vendedor.user.name}</span>
+                          </td>
+                        </tr>
+                      )
+                    })}
+                  </tbody>
+                </table>
+              </div>
+            ) : (
+              <div className="py-12 flex flex-col items-center justify-center text-center">
+                <Calendar className="w-12 h-12 text-muted-foreground mb-3 opacity-20" />
+                <p className="text-muted-foreground">Nenhuma visita agendada</p>
+                <p className="text-xs text-muted-foreground mt-1">Agende visitas para os próximos dias</p>
+                <Link href="/comercial/visitas">
+                  <Button variant="outline" size="sm" className="mt-4">
+                    Agendar visita
+                  </Button>
+                </Link>
+              </div>
+            )}
+          </CardContent>
+        </Card>
       </div>
     </div>
   )
