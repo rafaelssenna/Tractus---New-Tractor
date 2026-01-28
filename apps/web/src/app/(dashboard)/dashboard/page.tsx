@@ -29,7 +29,7 @@ import {
   Bar,
 } from 'recharts'
 
-// Dados para o gráfico de área - OS por mês
+// Dados para o gráfico de área - O.S. por mês
 const osPerMonth = [
   { mes: 'Jul', abertas: 45, finalizadas: 38 },
   { mes: 'Ago', abertas: 52, finalizadas: 45 },
@@ -40,7 +40,7 @@ const osPerMonth = [
   { mes: 'Jan', abertas: 72, finalizadas: 47 },
 ]
 
-// Dados para o gráfico de pizza - OS por status
+// Dados para o gráfico de pizza - O.S. por status
 const osByStatus = [
   { name: 'Aguardando Peças', value: 8, color: '#EF4444' },
   { name: 'Em Produção', value: 12, color: '#A855F7' },
@@ -49,7 +49,7 @@ const osByStatus = [
   { name: 'Orçamento', value: 15, color: '#8B5CF6' },
 ]
 
-// Dados para barras horizontais - OS por setor
+// Dados para barras horizontais - O.S. por setor
 const osBySetor = [
   { setor: 'Comercial', quantidade: 8 },
   { setor: 'Suprimentos', quantidade: 12 },
@@ -63,7 +63,7 @@ const recentActivities = [
   {
     id: 1,
     tipo: 'os_criada',
-    descricao: 'OS #1247 criada para ARMAC',
+    descricao: 'O.S. #1247 criada para ARMAC',
     tempo: '5 min',
     usuario: 'Roger',
     icon: FileText,
@@ -72,7 +72,7 @@ const recentActivities = [
   {
     id: 2,
     tipo: 'os_finalizada',
-    descricao: 'OS #1243 finalizada - Material Rodante',
+    descricao: 'O.S. #1243 finalizada - Material Rodante',
     tempo: '15 min',
     usuario: 'Joviano',
     icon: CheckCircle,
@@ -81,7 +81,7 @@ const recentActivities = [
   {
     id: 3,
     tipo: 'alerta',
-    descricao: 'OS #1239 aguardando peças há 3 dias',
+    descricao: 'O.S. #1239 aguardando peças há 3 dias',
     tempo: '1 hora',
     usuario: 'Sistema',
     icon: AlertTriangle,
@@ -90,7 +90,7 @@ const recentActivities = [
   {
     id: 4,
     tipo: 'producao',
-    descricao: 'OS #1245 iniciou produção',
+    descricao: 'O.S. #1245 iniciou produção',
     tempo: '2 horas',
     usuario: 'Suelen',
     icon: Factory,
@@ -100,7 +100,7 @@ const recentActivities = [
 
 const stats = [
   {
-    title: 'OS Abertas',
+    title: 'O.S. Abertas',
     value: '24',
     change: '+3',
     changeType: 'increase' as const,
@@ -215,11 +215,11 @@ export default function DashboardPage() {
 
       {/* Charts Row */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        {/* OS por Mês - Area Chart */}
+        {/* O.S. por Mês - Area Chart */}
         <Card className="border-border/50">
           <CardHeader className="pb-2">
             <div className="flex items-center justify-between">
-              <CardTitle className="text-lg font-semibold">OS por Mês</CardTitle>
+              <CardTitle className="text-lg font-semibold">O.S. porMês</CardTitle>
               <Badge variant="outline" className="text-xs">
                 Últimos 7 meses
               </Badge>
@@ -285,11 +285,11 @@ export default function DashboardPage() {
           </CardContent>
         </Card>
 
-        {/* OS por Status - Pie Chart */}
+        {/* O.S. por Status - Pie Chart */}
         <Card className="border-border/50">
           <CardHeader className="pb-2">
             <div className="flex items-center justify-between">
-              <CardTitle className="text-lg font-semibold">OS por Status</CardTitle>
+              <CardTitle className="text-lg font-semibold">O.S. porStatus</CardTitle>
               <Badge variant="outline" className="text-xs">
                 Total: 88
               </Badge>
@@ -344,11 +344,11 @@ export default function DashboardPage() {
 
       {/* Bottom Row */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        {/* OS por Setor */}
+        {/* O.S. por Setor */}
         <Card className="lg:col-span-2 border-border/50">
           <CardHeader className="pb-2">
             <div className="flex items-center justify-between">
-              <CardTitle className="text-lg font-semibold">OS por Setor</CardTitle>
+              <CardTitle className="text-lg font-semibold">O.S. porSetor</CardTitle>
               <Badge variant="outline" className="text-xs">
                 Distribuição atual
               </Badge>

@@ -456,7 +456,7 @@ export default function ClientesPage() {
                       Vendedor
                     </th>
                     <th className="text-left py-3 px-4 text-xs font-semibold text-muted-foreground uppercase tracking-wider">
-                      OS
+                      O.S.
                     </th>
                     <th className="text-right py-3 px-4 text-xs font-semibold text-muted-foreground uppercase tracking-wider">
                       Ações
@@ -887,7 +887,7 @@ export default function ClientesPage() {
                         : 'bg-muted text-muted-foreground'
                   }`}
                 >
-                  {selectedCliente.osAbertas} OS abertas
+                  {selectedCliente.osAbertas} O.S. abertas
                 </Badge>
               </div>
 

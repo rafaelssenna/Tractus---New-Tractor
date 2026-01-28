@@ -4,7 +4,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { ClipboardList, Clock, Truck, Calendar } from 'lucide-react'
 
 const stats = [
-  { title: 'OS em Planejamento', value: '5', icon: ClipboardList, color: 'text-info', bgColor: 'bg-info/20' },
+  { title: 'O.S. em Planejamento', value: '5', icon: ClipboardList, color: 'text-info', bgColor: 'bg-info/20' },
   { title: 'Aguardando Início', value: '3', icon: Clock, color: 'text-primary', bgColor: 'bg-primary/20' },
   { title: 'Fretes Programados', value: '2', icon: Truck, color: 'text-success', bgColor: 'bg-success/20' },
   { title: 'Previsão Semana', value: '8', icon: Calendar, color: 'text-warning', bgColor: 'bg-warning/20' },

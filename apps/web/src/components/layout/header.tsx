@@ -88,7 +88,7 @@ export function Header() {
         <div className="relative flex-1">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
           <Input
-            placeholder="Buscar OS, cliente, peça..."
+            placeholder="Buscar O.S., cliente, peça..."
             className="pl-10 bg-muted/50 border-transparent focus:border-primary/50 transition-colors"
           />
           <kbd className="absolute right-3 top-1/2 -translate-y-1/2 hidden sm:inline-flex h-5 select-none items-center gap-1 rounded border border-border bg-muted px-1.5 font-mono text-[10px] font-medium text-muted-foreground">
