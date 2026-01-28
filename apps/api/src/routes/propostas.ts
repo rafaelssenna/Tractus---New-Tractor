@@ -31,6 +31,7 @@ export async function propostasRoutes(app: FastifyInstance) {
         vendedor: { include: { user: { select: { name: true } } } },
         laudo: { select: { id: true, numero: true } },
         liberacaoCusto: true,
+        ordemServico: { select: { id: true, numero: true } },
       },
       orderBy: { createdAt: 'desc' },
     })
