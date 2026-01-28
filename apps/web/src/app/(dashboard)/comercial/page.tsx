@@ -49,14 +49,6 @@ interface MetaDashboard {
   }[]
 }
 
-interface Visita {
-  id: string
-  data: string
-  status: string
-  cliente: { id: string; nome: string; cidade?: string }
-  vendedor: { user: { name: string } }
-}
-
 interface ClienteRota {
   id: string
   nome: string
@@ -82,6 +74,17 @@ interface RotaDoDia {
   }
 }
 
+interface RotaProximoDia {
+  data: Date
+  diaSemana: string
+  clientes: {
+    id: string
+    nome: string
+    cidade?: string
+    vendedorNome: string
+  }[]
+}
+
 export default function ComercialPage() {
   const [loading, setLoading] = useState(true)
   const [vendedores, setVendedores] = useState<Vendedor[]>([])
@@ -89,7 +92,7 @@ export default function ComercialPage() {
   const [propostasPendentes, setPropostasPendentes] = useState(0)
   const [metasDashboard, setMetasDashboard] = useState<MetaDashboard | null>(null)
   const [rotasHoje, setRotasHoje] = useState<RotaDoDia[]>([])
-  const [proximasVisitas, setProximasVisitas] = useState<Visita[]>([])
+  const [proximasRotas, setProximasRotas] = useState<RotaProximoDia[]>([])
 
   useEffect(() => {
     fetchData()
@@ -99,12 +102,7 @@ export default function ComercialPage() {
     try {
       const apiUrl = process.env.NEXT_PUBLIC_API_URL
 
-      // Calcular datas
       const hoje = new Date()
-      const amanha = new Date(hoje)
-      amanha.setDate(hoje.getDate() + 1)
-      const fimSemana = new Date(hoje)
-      fimSemana.setDate(hoje.getDate() + 7)
 
       // Buscar dados básicos em paralelo
       const [vendedoresRes, clientesRes, propostasRes, metasRes] = await Promise.all([
@@ -160,15 +158,58 @@ export default function ComercialPage() {
         const rotasResults = await Promise.all(rotasPromises)
         const rotasValidas = rotasResults.filter((r): r is RotaDoDia => r !== null && r.clientesProgramados.length > 0)
         setRotasHoje(rotasValidas)
-      }
 
-      // Buscar próximas visitas (a partir de amanhã)
-      const visitasRes = await fetch(
-        `${apiUrl}/visitas?dataInicio=${amanha.toISOString().split('T')[0]}&dataFim=${fimSemana.toISOString().split('T')[0]}&limit=10`
-      )
-      if (visitasRes.ok) {
-        const data = await visitasRes.json()
-        setProximasVisitas(data)
+        // Buscar rotas dos próximos dias (amanhã até fim da semana/próximos 5 dias úteis)
+        const diasSemanaLabel = ['Domingo', 'Segunda', 'Terça', 'Quarta', 'Quinta', 'Sexta', 'Sábado']
+        const proximasDatas: Date[] = []
+
+        // Pegar os próximos 5 dias úteis (excluindo domingo)
+        let diaAtual = new Date(hoje)
+        while (proximasDatas.length < 5) {
+          diaAtual.setDate(diaAtual.getDate() + 1)
+          if (diaAtual.getDay() !== 0) { // Não é domingo
+            proximasDatas.push(new Date(diaAtual))
+          }
+        }
+
+        const rotasProximosDias: RotaProximoDia[] = []
+
+        for (const data of proximasDatas) {
+          const dataStr = data.toISOString().split('T')[0]
+          const clientesDoDia: { id: string; nome: string; cidade?: string; vendedorNome: string }[] = []
+
+          // Buscar rota de cada vendedor para esse dia
+          for (const v of vendedoresList) {
+            try {
+              const res = await fetch(`${apiUrl}/visitas/rota-do-dia?vendedorId=${v.id}&data=${dataStr}`)
+              if (res.ok) {
+                const rotaData = await res.json()
+                if (rotaData.clientesProgramados?.length > 0) {
+                  rotaData.clientesProgramados.forEach((c: ClienteRota) => {
+                    clientesDoDia.push({
+                      id: c.id,
+                      nome: c.nome,
+                      cidade: c.cidade,
+                      vendedorNome: v.user.name,
+                    })
+                  })
+                }
+              }
+            } catch (e) {
+              // Ignora erro
+            }
+          }
+
+          if (clientesDoDia.length > 0) {
+            rotasProximosDias.push({
+              data,
+              diaSemana: diasSemanaLabel[data.getDay()] || '',
+              clientes: clientesDoDia,
+            })
+          }
+        }
+
+        setProximasRotas(rotasProximosDias)
       }
     } catch (error) {
       console.error('Erro ao carregar dados:', error)
@@ -542,81 +583,76 @@ export default function ComercialPage() {
           </CardContent>
         </Card>
 
-        {/* Próximas Visitas */}
+        {/* Próximas Rotas */}
         <Card className="border-border/50">
           <CardHeader className="pb-2">
             <div className="flex items-center justify-between">
               <div>
                 <CardTitle className="text-lg flex items-center gap-2">
                   <Calendar className="w-5 h-5 text-info" />
-                  Próximas Visitas
+                  Próximas Rotas
                 </CardTitle>
-                <p className="text-xs text-muted-foreground mt-1">Agendamentos dos próximos 7 dias</p>
+                <p className="text-xs text-muted-foreground mt-1">Rotas programadas para os próximos dias</p>
               </div>
-              <Link href="/comercial/visitas">
+              <Link href="/comercial/rotas">
                 <Button variant="ghost" size="sm" className="text-xs">
-                  Ver todas
+                  Ver rotas
                   <ChevronRight className="w-3 h-3 ml-1" />
                 </Button>
               </Link>
             </div>
           </CardHeader>
           <CardContent>
-            {proximasVisitas.length > 0 ? (
-              <div className="border border-border/50 rounded-lg overflow-hidden">
-                <table className="w-full">
-                  <thead>
-                    <tr className="bg-muted/30 text-xs text-muted-foreground">
-                      <th className="text-left px-4 py-2 font-medium">Data</th>
-                      <th className="text-left px-4 py-2 font-medium">Cliente</th>
-                      <th className="text-left px-4 py-2 font-medium">Vendedor</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-border/50">
-                    {proximasVisitas.map((visita) => {
-                      const visitaDate = new Date(visita.data)
-                      return (
-                        <tr key={visita.id} className="hover:bg-muted/20">
-                          <td className="px-4 py-3">
-                            <div className="flex items-center gap-2">
-                              <div className="text-center">
-                                <p className="text-xs text-muted-foreground">
-                                  {visitaDate.toLocaleDateString('pt-BR', { weekday: 'short' })}
-                                </p>
-                                <p className="text-lg font-bold text-primary">
-                                  {visitaDate.getDate()}
-                                </p>
-                              </div>
+            {proximasRotas.length > 0 ? (
+              <div className="space-y-3 max-h-[400px] overflow-y-auto">
+                {proximasRotas.map((rota) => (
+                  <div key={rota.data.toISOString()} className="border border-border/50 rounded-lg overflow-hidden">
+                    <div className="bg-muted/30 px-4 py-2 flex items-center gap-3">
+                      <div className="text-center min-w-[45px]">
+                        <p className="text-[10px] text-muted-foreground uppercase">{rota.diaSemana}</p>
+                        <p className="text-xl font-bold text-primary">{rota.data.getDate()}</p>
+                      </div>
+                      <div className="border-l border-border/50 pl-3">
+                        <p className="text-sm font-medium">{rota.clientes.length} clientes</p>
+                        <p className="text-xs text-muted-foreground">
+                          {rota.data.toLocaleDateString('pt-BR')}
+                        </p>
+                      </div>
+                    </div>
+                    <div className="divide-y divide-border/50">
+                      {rota.clientes.slice(0, 4).map((cliente, idx) => (
+                        <div key={`${cliente.id}-${idx}`} className="px-4 py-2 flex items-center justify-between">
+                          <div className="flex items-center gap-2">
+                            <Building2 className="w-4 h-4 text-muted-foreground" />
+                            <div>
+                              <p className="text-sm font-medium">{cliente.nome}</p>
+                              {cliente.cidade && (
+                                <p className="text-xs text-muted-foreground">{cliente.cidade}</p>
+                              )}
                             </div>
-                          </td>
-                          <td className="px-4 py-3">
-                            <div className="flex items-center gap-2">
-                              <Building2 className="w-4 h-4 text-muted-foreground" />
-                              <div>
-                                <p className="font-medium text-sm">{visita.cliente.nome}</p>
-                                {visita.cliente.cidade && (
-                                  <p className="text-xs text-muted-foreground">{visita.cliente.cidade}</p>
-                                )}
-                              </div>
-                            </div>
-                          </td>
-                          <td className="px-4 py-3">
-                            <span className="text-sm">{visita.vendedor.user.name}</span>
-                          </td>
-                        </tr>
-                      )
-                    })}
-                  </tbody>
-                </table>
+                          </div>
+                          <Badge variant="outline" className="text-[10px]">
+                            {cliente.vendedorNome.split(' ')[0]}
+                          </Badge>
+                        </div>
+                      ))}
+                      {rota.clientes.length > 4 && (
+                        <div className="px-4 py-2 text-xs text-muted-foreground text-center">
+                          + {rota.clientes.length - 4} clientes
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                ))}
               </div>
             ) : (
               <div className="py-12 flex flex-col items-center justify-center text-center">
                 <Calendar className="w-12 h-12 text-muted-foreground mb-3 opacity-20" />
-                <p className="text-muted-foreground">Nenhuma visita agendada</p>
-                <p className="text-xs text-muted-foreground mt-1">Agende visitas para os próximos dias</p>
-                <Link href="/comercial/visitas">
+                <p className="text-muted-foreground">Nenhuma rota programada</p>
+                <p className="text-xs text-muted-foreground mt-1">Configure as rotas semanais</p>
+                <Link href="/comercial/rotas">
                   <Button variant="outline" size="sm" className="mt-4">
-                    Agendar visita
+                    Configurar rotas
                   </Button>
                 </Link>
               </div>
