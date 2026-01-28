@@ -495,15 +495,26 @@ export default function PropostasPage() {
                               <Eye className="w-4 h-4" />
                             </Button>
                             {proposta.status === 'EM_ABERTO' && (
-                              <Button
-                                variant="ghost"
-                                size="sm"
-                                className="h-8 w-8 p-0"
-                                onClick={() => handleEditProposta(proposta)}
-                                title="Editar"
-                              >
-                                <Edit className="w-4 h-4" />
-                              </Button>
+                              <>
+                                <Button
+                                  variant="ghost"
+                                  size="sm"
+                                  className="h-8 w-8 p-0"
+                                  onClick={() => handleEditProposta(proposta)}
+                                  title="Editar"
+                                >
+                                  <Edit className="w-4 h-4" />
+                                </Button>
+                                <Button
+                                  variant="ghost"
+                                  size="sm"
+                                  className="h-8 w-8 p-0 text-green-500 hover:text-green-600 hover:bg-green-500/10"
+                                  onClick={() => handleUpdateStatus(proposta.id, 'APROVADA')}
+                                  title="Aprovar"
+                                >
+                                  <CheckCircle className="w-4 h-4" />
+                                </Button>
+                              </>
                             )}
                           </div>
                         </td>
