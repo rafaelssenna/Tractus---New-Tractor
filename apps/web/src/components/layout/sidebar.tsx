@@ -25,6 +25,7 @@ import {
   FileText,
 } from 'lucide-react'
 import { useState } from 'react'
+import { useAuth, canAccessRoute } from '@/contexts/auth-context'
 
 type MenuItem = {
   title: string
@@ -33,7 +34,7 @@ type MenuItem = {
   submenu?: { title: string; href: string; icon: React.ComponentType<{ className?: string }> }[]
 }
 
-const menuItems: MenuItem[] = [
+const allMenuItems: MenuItem[] = [
   {
     title: 'Dashboard',
     href: '/dashboard',
@@ -78,6 +79,25 @@ export function Sidebar() {
   const pathname = usePathname()
   const [collapsed, setCollapsed] = useState(false)
   const [expandedMenus, setExpandedMenus] = useState<string[]>([])
+  const { user, logout, isAdmin, isDiretor } = useAuth()
+
+  // Filtrar menus baseado no perfil do usuário
+  const menuItems = allMenuItems.filter(item => {
+    if (!user) return false
+    return canAccessRoute(user.role, item.href)
+  }).map(item => {
+    // Filtrar submenus também
+    if (item.submenu) {
+      return {
+        ...item,
+        submenu: item.submenu.filter(sub => canAccessRoute(user?.role, sub.href))
+      }
+    }
+    return item
+  })
+
+  // Verificar se pode ver link de Usuários (só ADMIN, DIRETOR e RH)
+  const canSeeUsers = isAdmin || isDiretor || user?.role === 'RH'
 
   const toggleSubmenu = (href: string) => {
     setExpandedMenus((prev) =>
@@ -237,39 +257,66 @@ export function Sidebar() {
       <div className="p-3 border-t border-sidebar-border">
         {!collapsed ? (
           <div className="space-y-2">
-            <Link
-              href="/configuracoes/usuarios"
-              className="flex items-center gap-3 px-3 py-2 rounded-lg text-muted-foreground hover:bg-sidebar-accent/50 hover:text-foreground transition-colors"
-            >
-              <Users className="w-5 h-5" />
-              <span className="text-sm">Usuários</span>
-            </Link>
+            {canSeeUsers && (
+              <Link
+                href="/configuracoes/usuarios"
+                className="flex items-center gap-3 px-3 py-2 rounded-lg text-muted-foreground hover:bg-sidebar-accent/50 hover:text-foreground transition-colors"
+              >
+                <Users className="w-5 h-5" />
+                <span className="text-sm">Usuários</span>
+              </Link>
+            )}
             <div className="flex items-center gap-3 px-3 py-3 rounded-lg bg-muted/30">
               <div className="w-9 h-9 rounded-full bg-primary/20 flex items-center justify-center">
-                <User className="w-4 h-4 text-primary" />
+                {user?.photo ? (
+                  <img src={user.photo} alt={user.name} className="w-9 h-9 rounded-full object-cover" />
+                ) : (
+                  <span className="text-sm font-bold text-primary">
+                    {user?.name?.charAt(0).toUpperCase() || 'U'}
+                  </span>
+                )}
               </div>
               <div className="flex-1 min-w-0">
-                <p className="text-sm font-medium truncate">Admin</p>
-                <p className="text-xs text-muted-foreground truncate">admin@tractus.com</p>
+                <p className="text-sm font-medium truncate">{user?.name || 'Usuário'}</p>
+                <p className="text-xs text-muted-foreground truncate">{user?.email}</p>
               </div>
-              <button className="p-1.5 rounded-md hover:bg-muted transition-colors">
+              <button
+                onClick={logout}
+                className="p-1.5 rounded-md hover:bg-muted transition-colors"
+                title="Sair"
+              >
                 <LogOut className="w-4 h-4 text-muted-foreground" />
               </button>
             </div>
           </div>
         ) : (
           <div className="space-y-2">
-            <Link
-              href="/configuracoes/usuarios"
-              className="flex items-center justify-center p-2.5 rounded-lg text-muted-foreground hover:bg-sidebar-accent/50 hover:text-foreground transition-colors"
-            >
-              <Users className="w-5 h-5" />
-            </Link>
+            {canSeeUsers && (
+              <Link
+                href="/configuracoes/usuarios"
+                className="flex items-center justify-center p-2.5 rounded-lg text-muted-foreground hover:bg-sidebar-accent/50 hover:text-foreground transition-colors"
+              >
+                <Users className="w-5 h-5" />
+              </Link>
+            )}
             <div className="flex items-center justify-center p-2">
               <div className="w-9 h-9 rounded-full bg-primary/20 flex items-center justify-center">
-                <User className="w-4 h-4 text-primary" />
+                {user?.photo ? (
+                  <img src={user.photo} alt={user.name} className="w-9 h-9 rounded-full object-cover" />
+                ) : (
+                  <span className="text-sm font-bold text-primary">
+                    {user?.name?.charAt(0).toUpperCase() || 'U'}
+                  </span>
+                )}
               </div>
             </div>
+            <button
+              onClick={logout}
+              className="flex items-center justify-center p-2.5 rounded-lg text-muted-foreground hover:bg-sidebar-accent/50 hover:text-destructive transition-colors w-full"
+              title="Sair"
+            >
+              <LogOut className="w-5 h-5" />
+            </button>
           </div>
         )}
       </div>
