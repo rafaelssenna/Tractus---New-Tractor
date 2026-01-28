@@ -23,6 +23,7 @@ import {
   Route,
   UserCheck,
   FileText,
+  Wrench,
 } from 'lucide-react'
 import { useState } from 'react'
 import { useAuth, canAccessRoute } from '@/contexts/auth-context'
@@ -49,6 +50,7 @@ const allMenuItems: MenuItem[] = [
       { title: 'Clientes', href: '/comercial/clientes', icon: Users },
       { title: 'Vendedores', href: '/comercial/vendedores', icon: UserCheck },
       { title: 'Propostas', href: '/comercial/propostas', icon: FileText },
+      { title: 'Ordens de Serviço', href: '/comercial/ordens-servico', icon: Wrench },
       { title: 'Visitas', href: '/comercial/visitas', icon: MapPin },
       { title: 'Rotas', href: '/comercial/rotas', icon: Route },
     ],
