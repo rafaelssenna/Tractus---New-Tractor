@@ -68,13 +68,23 @@ export default function ComercialPage() {
     try {
       const apiUrl = process.env.NEXT_PUBLIC_API_URL
 
+      // Calcular início e fim da semana atual
+      const hoje = new Date()
+      const diaSemana = hoje.getDay()
+      const inicioSemana = new Date(hoje)
+      inicioSemana.setDate(hoje.getDate() - diaSemana)
+      inicioSemana.setHours(0, 0, 0, 0)
+      const fimSemana = new Date(inicioSemana)
+      fimSemana.setDate(inicioSemana.getDate() + 6)
+      fimSemana.setHours(23, 59, 59, 999)
+
       // Buscar dados em paralelo
       const [vendedoresRes, clientesRes, propostasRes, metasRes, visitasRes] = await Promise.all([
         fetch(`${apiUrl}/vendedores`),
         fetch(`${apiUrl}/clientes`),
         fetch(`${apiUrl}/propostas?status=EM_ABERTO`),
         fetch(`${apiUrl}/metas/dashboard`),
-        fetch(`${apiUrl}/visitas?status=agendada&limit=5`),
+        fetch(`${apiUrl}/visitas?dataInicio=${inicioSemana.toISOString().split('T')[0]}&dataFim=${fimSemana.toISOString().split('T')[0]}&limit=10`),
       ])
 
       if (vendedoresRes.ok) {
@@ -362,22 +372,33 @@ export default function ComercialPage() {
             <CardContent>
               {visitasSemana.length > 0 ? (
                 <div className="space-y-3">
-                  {visitasSemana.map((visita) => (
-                    <div key={visita.id} className="p-3 rounded-lg border border-border/50">
-                      <div className="flex items-center justify-between mb-1">
-                        <span className="font-medium text-sm">{visita.cliente.nome}</span>
-                        <Badge variant="outline" className="text-[10px]">
-                          {new Date(visita.data).toLocaleDateString('pt-BR', { weekday: 'short', day: '2-digit' })}
-                        </Badge>
+                  {visitasSemana.map((visita) => {
+                    const visitaDate = new Date(visita.data)
+                    const hoje = new Date()
+                    const isHoje = visitaDate.toDateString() === hoje.toDateString()
+                    return (
+                      <div
+                        key={visita.id}
+                        className={`p-3 rounded-lg border ${isHoje ? 'border-primary/50 bg-primary/5' : 'border-border/50'}`}
+                      >
+                        <div className="flex items-center justify-between mb-1">
+                          <span className="font-medium text-sm">{visita.cliente.nome}</span>
+                          <Badge
+                            variant={isHoje ? 'default' : 'outline'}
+                            className={isHoje ? 'bg-primary text-primary-foreground text-[10px]' : 'text-[10px]'}
+                          >
+                            {isHoje ? 'Hoje' : visitaDate.toLocaleDateString('pt-BR', { weekday: 'short', day: '2-digit' })}
+                          </Badge>
+                        </div>
+                        <p className="text-xs text-muted-foreground">{visita.vendedor.user.name}</p>
                       </div>
-                      <p className="text-xs text-muted-foreground">{visita.vendedor.user.name}</p>
-                    </div>
-                  ))}
+                    )
+                  })}
                 </div>
               ) : (
                 <div className="py-8 flex flex-col items-center justify-center text-center">
                   <MapPin className="w-8 h-8 text-muted-foreground mb-2" />
-                  <p className="text-muted-foreground text-sm">Nenhuma visita agendada</p>
+                  <p className="text-muted-foreground text-sm">Nenhuma visita esta semana</p>
                 </div>
               )}
             </CardContent>
