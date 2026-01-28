@@ -4,6 +4,7 @@ import { clientesRoutes } from './clientes'
 import { vendedoresRoutes } from './vendedores'
 import { laudosRoutes } from './laudos'
 import { propostasRoutes } from './propostas'
+import { ordensServicoRoutes } from './ordens-servico'
 import { visitasRoutes } from './visitas'
 import { rotasRoutes } from './rotas'
 import { metasRoutes } from './metas'
@@ -19,6 +20,7 @@ export async function routes(app: FastifyInstance) {
     api.register(vendedoresRoutes, { prefix: '/vendedores' })
     api.register(laudosRoutes, { prefix: '/laudos' })
     api.register(propostasRoutes, { prefix: '/propostas' })
+    api.register(ordensServicoRoutes, { prefix: '/ordens-servico' })
     api.register(visitasRoutes, { prefix: '/visitas' })
     api.register(rotasRoutes, { prefix: '/rotas' })
     api.register(metasRoutes, { prefix: '/metas' })

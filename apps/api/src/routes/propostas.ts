@@ -100,8 +100,8 @@ export async function propostasRoutes(app: FastifyInstance) {
       // Buscar dados atuais para recalcular margem
       const current = await db.proposta.findUnique({ where: { id } })
       if (current) {
-        const valor = data.valor ?? current.valor
-        const custo = data.custoEstimado ?? current.custoEstimado
+        const valor = data.valor ?? Number(current.valor)
+        const custo = data.custoEstimado ?? (current.custoEstimado ? Number(current.custoEstimado) : null)
         if (custo && valor > 0) {
           margem = ((valor - custo) / valor) * 100
         }

@@ -11,7 +11,7 @@ const laudoSchema = z.object({
   inspetor: z.string(),
   local: z.string().optional(),
   condicaoSolo: z.enum(['BAIXO_IMPACTO', 'MEDIO_IMPACTO', 'ALTO_IMPACTO']),
-  medicoes: z.any(), // JSON com medições detalhadas
+  medicoes: z.any().default([]), // JSON com medições detalhadas
   sumario: z.string().optional(),
 })
 
@@ -76,6 +76,7 @@ export async function laudosRoutes(app: FastifyInstance) {
     const laudo = await db.laudo.create({
       data: {
         ...data,
+        medicoes: data.medicoes ?? [],
         numero,
         status: 'EM_ELABORACAO',
       },
@@ -138,7 +139,7 @@ export async function laudosRoutes(app: FastifyInstance) {
         clienteId: laudo.clienteId,
         vendedorId: laudo.vendedorId,
         valor,
-        categoria: (category as any) || 'RODANTE',
+        categoria: (categoria as any) || 'RODANTE',
         status: 'EM_ABERTO',
       },
     })
