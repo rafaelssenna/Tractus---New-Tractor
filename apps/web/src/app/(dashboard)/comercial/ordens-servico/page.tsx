@@ -405,15 +405,50 @@ export default function OrdensServicoPage() {
                           </span>
                         </td>
                         <td className="py-4 px-4 text-right">
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            className="h-8 w-8 p-0"
-                            onClick={() => handleViewOS(os)}
-                            title="Visualizar"
-                          >
-                            <Eye className="w-4 h-4" />
-                          </Button>
+                          <div className="flex items-center justify-end gap-1">
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              className="h-8 w-8 p-0"
+                              onClick={() => handleViewOS(os)}
+                              title="Visualizar"
+                            >
+                              <Eye className="w-4 h-4" />
+                            </Button>
+                            {os.status === 'ABERTA' && (
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                className="h-8 w-8 p-0 text-yellow-500 hover:text-yellow-600 hover:bg-yellow-500/10"
+                                onClick={() => handleUpdateStatus(os.id, 'EM_PRODUCAO')}
+                                title="Iniciar Produção"
+                              >
+                                <Play className="w-4 h-4" />
+                              </Button>
+                            )}
+                            {os.status === 'EM_PRODUCAO' && (
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                className="h-8 w-8 p-0 text-green-500 hover:text-green-600 hover:bg-green-500/10"
+                                onClick={() => handleUpdateStatus(os.id, 'FINALIZADA')}
+                                title="Finalizar"
+                              >
+                                <CheckCircle className="w-4 h-4" />
+                              </Button>
+                            )}
+                            {os.status === 'FINALIZADA' && (
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                className="h-8 w-8 p-0 text-emerald-500 hover:text-emerald-600 hover:bg-emerald-500/10"
+                                onClick={() => handleUpdateStatus(os.id, 'FATURADA')}
+                                title="Faturar"
+                              >
+                                <Receipt className="w-4 h-4" />
+                              </Button>
+                            )}
+                          </div>
                         </td>
                       </tr>
                     )
