@@ -147,6 +147,7 @@ export default function OrdensServicoPage() {
       const res = await fetch(`${API_URL}/ordens-servico/from-proposta/${propostaId}`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({}),
       })
 
       if (!res.ok) {
