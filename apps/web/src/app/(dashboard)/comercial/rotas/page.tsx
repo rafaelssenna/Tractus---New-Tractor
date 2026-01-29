@@ -417,7 +417,8 @@ export default function RotasPage() {
           clienteId: solicitarInspetorForm.clienteId,
           vendedorId: selectedRota.vendedor.id,
           equipamentos: solicitarInspetorForm.equipamentos,
-          observacao: solicitarInspetorForm.observacao || null,
+          observacao: solicitarInspetorForm.observacao || undefined,
+          dataVisita: new Date().toISOString(), // Data provisória, inspetor define depois
         }),
       })
 
