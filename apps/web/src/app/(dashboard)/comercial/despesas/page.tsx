@@ -24,6 +24,11 @@ import {
   ImageIcon,
   Calendar,
   Eye,
+  Check,
+  XCircle,
+  Clock,
+  Filter,
+  Users,
 } from 'lucide-react'
 
 interface Despesa {
@@ -37,6 +42,14 @@ interface Despesa {
   valorExtraido: number | null
   nomeExtraido: string | null
   createdAt: string
+  status: 'PENDENTE' | 'APROVADA' | 'REPROVADA'
+  aprovadoPor?: { name: string } | null
+  dataAprovacao?: string | null
+  motivoReprovacao?: string | null
+  vendedor?: {
+    id: string
+    user: { name: string; photo?: string | null }
+  }
 }
 
 interface Vendedor {
@@ -49,14 +62,28 @@ const API_URL = process.env.NEXT_PUBLIC_API_URL
 
 export default function DespesasPage() {
   const router = useRouter()
-  const { user } = useAuth()
+  const { user, isAdmin, isDiretor } = useAuth()
   const fileInputRef = useRef<HTMLInputElement>(null)
+
+  // Admin/Diretor vê todas as despesas
+  const isGestor = isAdmin || isDiretor
 
   const [despesas, setDespesas] = useState<Despesa[]>([])
   const [vendedor, setVendedor] = useState<Vendedor | null>(null)
+  const [vendedores, setVendedores] = useState<{ id: string; user: { name: string } }[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
   const [saving, setSaving] = useState(false)
+
+  // Filtros para admin
+  const [statusFilter, setStatusFilter] = useState<string>('PENDENTE')
+  const [vendedorFilter, setVendedorFilter] = useState<string>('')
+
+  // Modal de reprovar
+  const [showReprovarModal, setShowReprovarModal] = useState(false)
+  const [despesaParaReprovar, setDespesaParaReprovar] = useState<string | null>(null)
+  const [motivoReprovacao, setMotivoReprovacao] = useState('')
+  const [aprovando, setAprovando] = useState<string | null>(null)
 
   // Form state
   const [showForm, setShowForm] = useState(false)
@@ -119,11 +146,39 @@ export default function DespesasPage() {
     }
   }
 
+  const fetchVendedores = async () => {
+    try {
+      const res = await fetch(`${API_URL}/vendedores`)
+      if (!res.ok) throw new Error('Erro ao buscar vendedores')
+      const data = await res.json()
+      setVendedores(data)
+    } catch (err: any) {
+      console.error('Erro ao buscar vendedores:', err)
+    }
+  }
+
   const fetchDespesas = async () => {
-    if (!vendedor?.id) return
+    // Para vendedor, precisa ter vendedor carregado
+    if (!isGestor && !vendedor?.id) return
+
     try {
       setLoading(true)
-      const res = await fetch(`${API_URL}/despesas?vendedorId=${vendedor.id}&mes=${mes}&ano=${ano}`)
+
+      // Montar query params
+      const params = new URLSearchParams()
+      params.append('mes', mes.toString())
+      params.append('ano', ano.toString())
+
+      if (isGestor) {
+        // Admin/Diretor: filtrar por status e vendedor
+        if (statusFilter) params.append('status', statusFilter)
+        if (vendedorFilter) params.append('vendedorId', vendedorFilter)
+      } else {
+        // Vendedor: apenas suas despesas
+        if (vendedor?.id) params.append('vendedorId', vendedor.id)
+      }
+
+      const res = await fetch(`${API_URL}/despesas?${params.toString()}`)
       if (!res.ok) throw new Error('Erro ao carregar despesas')
       const data = await res.json()
       setDespesas(data)
@@ -134,15 +189,62 @@ export default function DespesasPage() {
     }
   }
 
+  // Aprovar despesa
+  const handleAprovar = async (despesaId: string) => {
+    if (!user?.id) return
+    try {
+      setAprovando(despesaId)
+      const res = await fetch(`${API_URL}/despesas/${despesaId}/aprovar`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ aprovadoPorId: user.id }),
+      })
+      if (!res.ok) throw new Error('Erro ao aprovar despesa')
+      fetchDespesas()
+    } catch (err: any) {
+      setError(err.message)
+    } finally {
+      setAprovando(null)
+    }
+  }
+
+  // Reprovar despesa
+  const handleReprovar = async () => {
+    if (!user?.id || !despesaParaReprovar) return
+    try {
+      setAprovando(despesaParaReprovar)
+      const res = await fetch(`${API_URL}/despesas/${despesaParaReprovar}/reprovar`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          aprovadoPorId: user.id,
+          motivoReprovacao: motivoReprovacao || undefined,
+        }),
+      })
+      if (!res.ok) throw new Error('Erro ao reprovar despesa')
+      setShowReprovarModal(false)
+      setDespesaParaReprovar(null)
+      setMotivoReprovacao('')
+      fetchDespesas()
+    } catch (err: any) {
+      setError(err.message)
+    } finally {
+      setAprovando(null)
+    }
+  }
+
   useEffect(() => {
+    if (isGestor) {
+      fetchVendedores()
+    }
     fetchVendedor()
   }, [user?.id])
 
   useEffect(() => {
-    if (vendedor?.id) {
+    if (isGestor || vendedor?.id) {
       fetchDespesas()
     }
-  }, [vendedor?.id, mes, ano])
+  }, [vendedor?.id, mes, ano, statusFilter, vendedorFilter, isGestor])
 
   const handleImageSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0]
@@ -322,18 +424,41 @@ export default function DespesasPage() {
 
   const totalMes = despesas.reduce((acc, d) => acc + Number(d.valor), 0)
 
+  // Calcular estatísticas para admin
+  const pendentes = despesas.filter(d => d.status === 'PENDENTE').length
+  const aprovadas = despesas.filter(d => d.status === 'APROVADA').length
+  const reprovadas = despesas.filter(d => d.status === 'REPROVADA').length
+  const totalPendente = despesas.filter(d => d.status === 'PENDENTE').reduce((acc, d) => acc + Number(d.valor), 0)
+
+  const getStatusBadge = (status: string) => {
+    switch (status) {
+      case 'PENDENTE':
+        return <Badge variant="outline" className="bg-yellow-500/10 text-yellow-600 border-yellow-500/30"><Clock className="w-3 h-3 mr-1" />Pendente</Badge>
+      case 'APROVADA':
+        return <Badge variant="outline" className="bg-success/10 text-success border-success/30"><Check className="w-3 h-3 mr-1" />Aprovada</Badge>
+      case 'REPROVADA':
+        return <Badge variant="outline" className="bg-destructive/10 text-destructive border-destructive/30"><XCircle className="w-3 h-3 mr-1" />Reprovada</Badge>
+      default:
+        return null
+    }
+  }
+
   return (
     <div className="space-y-6 p-1">
       {/* Header */}
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-4">
-          <Button variant="ghost" size="sm" onClick={() => router.push('/comercial/rotas')}>
+          <Button variant="ghost" size="sm" onClick={() => router.push('/comercial')}>
             <ArrowLeft className="w-4 h-4 mr-2" />
             Voltar
           </Button>
           <div>
-            <h1 className="text-3xl font-bold tracking-tight">Minhas Despesas</h1>
-            <p className="text-muted-foreground mt-1">Registre suas despesas para reembolso</p>
+            <h1 className="text-3xl font-bold tracking-tight">
+              {isGestor ? 'Gestão de Despesas' : 'Minhas Despesas'}
+            </h1>
+            <p className="text-muted-foreground mt-1">
+              {isGestor ? 'Aprove ou reprove despesas dos vendedores' : 'Registre suas despesas para reembolso'}
+            </p>
           </div>
         </div>
         <div className="flex gap-2">
@@ -341,10 +466,12 @@ export default function DespesasPage() {
             <RefreshCw className="w-4 h-4 mr-2" />
             Atualizar
           </Button>
-          <Button size="sm" onClick={() => setShowForm(true)}>
-            <Plus className="w-4 h-4 mr-2" />
-            Nova Despesa
-          </Button>
+          {!isGestor && (
+            <Button size="sm" onClick={() => setShowForm(true)}>
+              <Plus className="w-4 h-4 mr-2" />
+              Nova Despesa
+            </Button>
+          )}
         </div>
       </div>
 
@@ -358,43 +485,103 @@ export default function DespesasPage() {
         </div>
       )}
 
-      {/* PIX Card */}
-      <Card className="border-border/50">
-        <CardHeader className="pb-4">
-          <div className="flex items-center justify-between">
-            <CardTitle className="text-lg flex items-center gap-2">
-              <CreditCard className="w-5 h-5" />
-              Chave PIX para Reembolso
-            </CardTitle>
-            <Button variant="outline" size="sm" onClick={() => {
-              setPixForm({
-                chavePix: vendedor?.chavePix || '',
-                tipoChavePix: vendedor?.tipoChavePix || 'CPF',
-              })
-              setShowPixModal(true)
-            }}>
-              {vendedor?.chavePix ? 'Editar' : 'Cadastrar'}
-            </Button>
-          </div>
-        </CardHeader>
-        <CardContent>
-          {vendedor?.chavePix ? (
-            <div className="flex items-center gap-4">
-              <Badge variant="outline" className="text-xs">
-                {vendedor.tipoChavePix}
-              </Badge>
-              <span className="text-sm font-mono">{vendedor.chavePix}</span>
+      {/* Cards de Estatísticas - Admin */}
+      {isGestor && (
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+          <Card className="border-border/50">
+            <CardContent className="p-4">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-full bg-yellow-500/20 flex items-center justify-center">
+                  <Clock className="w-5 h-5 text-yellow-600" />
+                </div>
+                <div>
+                  <p className="text-sm text-muted-foreground">Pendentes</p>
+                  <p className="text-2xl font-bold">{pendentes}</p>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+          <Card className="border-border/50">
+            <CardContent className="p-4">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-full bg-success/20 flex items-center justify-center">
+                  <Check className="w-5 h-5 text-success" />
+                </div>
+                <div>
+                  <p className="text-sm text-muted-foreground">Aprovadas</p>
+                  <p className="text-2xl font-bold">{aprovadas}</p>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+          <Card className="border-border/50">
+            <CardContent className="p-4">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-full bg-destructive/20 flex items-center justify-center">
+                  <XCircle className="w-5 h-5 text-destructive" />
+                </div>
+                <div>
+                  <p className="text-sm text-muted-foreground">Reprovadas</p>
+                  <p className="text-2xl font-bold">{reprovadas}</p>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+          <Card className="border-border/50">
+            <CardContent className="p-4">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-full bg-primary/20 flex items-center justify-center">
+                  <Receipt className="w-5 h-5 text-primary" />
+                </div>
+                <div>
+                  <p className="text-sm text-muted-foreground">Total Pendente</p>
+                  <p className="text-xl font-bold">{formatCurrency(totalPendente)}</p>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+      )}
+
+      {/* PIX Card - Apenas para vendedores */}
+      {!isGestor && (
+        <Card className="border-border/50">
+          <CardHeader className="pb-4">
+            <div className="flex items-center justify-between">
+              <CardTitle className="text-lg flex items-center gap-2">
+                <CreditCard className="w-5 h-5" />
+                Chave PIX para Reembolso
+              </CardTitle>
+              <Button variant="outline" size="sm" onClick={() => {
+                setPixForm({
+                  chavePix: vendedor?.chavePix || '',
+                  tipoChavePix: vendedor?.tipoChavePix || 'CPF',
+                })
+                setShowPixModal(true)
+              }}>
+                {vendedor?.chavePix ? 'Editar' : 'Cadastrar'}
+              </Button>
             </div>
-          ) : (
-            <p className="text-sm text-muted-foreground">
-              Cadastre sua chave PIX para receber os reembolsos
-            </p>
-          )}
-        </CardContent>
-      </Card>
+          </CardHeader>
+          <CardContent>
+            {vendedor?.chavePix ? (
+              <div className="flex items-center gap-4">
+                <Badge variant="outline" className="text-xs">
+                  {vendedor.tipoChavePix}
+                </Badge>
+                <span className="text-sm font-mono">{vendedor.chavePix}</span>
+              </div>
+            ) : (
+              <p className="text-sm text-muted-foreground">
+                Cadastre sua chave PIX para receber os reembolsos
+              </p>
+            )}
+          </CardContent>
+        </Card>
+      )}
 
       {/* Filtro e Resumo */}
-      <div className="flex items-center gap-4">
+      <div className="flex flex-wrap items-center gap-4">
         <div className="flex items-center gap-2">
           <select
             className="h-9 px-3 rounded-md border border-input bg-background text-sm"
@@ -417,9 +604,42 @@ export default function DespesasPage() {
             ))}
           </select>
         </div>
+
+        {/* Filtros Admin */}
+        {isGestor && (
+          <>
+            <div className="flex items-center gap-2">
+              <Filter className="w-4 h-4 text-muted-foreground" />
+              <select
+                className="h-9 px-3 rounded-md border border-input bg-background text-sm"
+                value={statusFilter}
+                onChange={(e) => setStatusFilter(e.target.value)}
+              >
+                <option value="">Todos os status</option>
+                <option value="PENDENTE">Pendentes</option>
+                <option value="APROVADA">Aprovadas</option>
+                <option value="REPROVADA">Reprovadas</option>
+              </select>
+            </div>
+            <div className="flex items-center gap-2">
+              <Users className="w-4 h-4 text-muted-foreground" />
+              <select
+                className="h-9 px-3 rounded-md border border-input bg-background text-sm"
+                value={vendedorFilter}
+                onChange={(e) => setVendedorFilter(e.target.value)}
+              >
+                <option value="">Todos os vendedores</option>
+                {vendedores.map((v) => (
+                  <option key={v.id} value={v.id}>{v.user.name}</option>
+                ))}
+              </select>
+            </div>
+          </>
+        )}
+
         <div className="flex-1" />
         <div className="text-right">
-          <p className="text-sm text-muted-foreground">Total do mes</p>
+          <p className="text-sm text-muted-foreground">Total do mês</p>
           <p className="text-2xl font-bold text-primary">{formatCurrency(totalMes)}</p>
         </div>
       </div>
@@ -446,37 +666,63 @@ export default function DespesasPage() {
             <Card key={despesa.id} className="border-border/50">
               <CardContent className="p-4">
                 <div className="flex items-center gap-4">
-                  <div className={`w-10 h-10 rounded-full flex items-center justify-center ${
-                    despesa.validadoPorIA ? 'bg-success/20 text-success' : 'bg-primary/20 text-primary'
-                  }`}>
-                    {despesa.validadoPorIA ? <CheckCircle className="w-5 h-5" /> : <Receipt className="w-5 h-5" />}
-                  </div>
+                  {/* Avatar/Icon */}
+                  {isGestor && despesa.vendedor ? (
+                    <div className="w-10 h-10 rounded-full bg-primary/20 flex items-center justify-center overflow-hidden">
+                      {despesa.vendedor.user.photo ? (
+                        <img src={despesa.vendedor.user.photo} alt="" className="w-10 h-10 object-cover" />
+                      ) : (
+                        <span className="text-sm font-bold text-primary">
+                          {despesa.vendedor.user.name.charAt(0).toUpperCase()}
+                        </span>
+                      )}
+                    </div>
+                  ) : (
+                    <div className={`w-10 h-10 rounded-full flex items-center justify-center ${
+                      despesa.validadoPorIA ? 'bg-success/20 text-success' : 'bg-primary/20 text-primary'
+                    }`}>
+                      {despesa.validadoPorIA ? <CheckCircle className="w-5 h-5" /> : <Receipt className="w-5 h-5" />}
+                    </div>
+                  )}
+
+                  {/* Info */}
                   <div className="flex-1 min-w-0">
-                    <div className="flex items-center gap-2">
+                    <div className="flex items-center gap-2 flex-wrap">
                       <p className="font-medium">{despesa.tipo}</p>
                       {despesa.nomeExtraido && (
                         <Badge variant="outline" className="text-[10px]">
                           {despesa.nomeExtraido}
                         </Badge>
                       )}
+                      {getStatusBadge(despesa.status)}
                     </div>
+                    {isGestor && despesa.vendedor && (
+                      <p className="text-sm text-primary font-medium">{despesa.vendedor.user.name}</p>
+                    )}
                     {despesa.descricao && (
                       <p className="text-sm text-muted-foreground truncate">{despesa.descricao}</p>
                     )}
                     <div className="flex items-center gap-2 mt-1 text-xs text-muted-foreground">
                       <Calendar className="w-3 h-3" />
                       {formatDate(despesa.data)}
+                      {despesa.status === 'REPROVADA' && despesa.motivoReprovacao && (
+                        <span className="text-destructive ml-2">• {despesa.motivoReprovacao}</span>
+                      )}
                     </div>
                   </div>
+
+                  {/* Valor */}
                   <div className="text-right">
                     <p className="font-bold text-lg">{formatCurrency(Number(despesa.valor))}</p>
                     {despesa.valorExtraido && despesa.valorExtraido !== Number(despesa.valor) && (
                       <p className="text-xs text-muted-foreground">
-                        IA: {formatCurrency(despesa.valorExtraido)}
+                        IA: {formatCurrency(Number(despesa.valorExtraido))}
                       </p>
                     )}
                   </div>
-                  <div className="flex items-center gap-2">
+
+                  {/* Ações */}
+                  <div className="flex items-center gap-1">
                     {despesa.comprovante && (
                       <Button
                         variant="ghost"
@@ -489,14 +735,49 @@ export default function DespesasPage() {
                         <Eye className="w-4 h-4" />
                       </Button>
                     )}
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      className="text-destructive hover:text-destructive"
-                      onClick={() => handleDeleteDespesa(despesa.id)}
-                    >
-                      <Trash2 className="w-4 h-4" />
-                    </Button>
+
+                    {/* Botões de aprovação - apenas para admin e despesas pendentes */}
+                    {isGestor && despesa.status === 'PENDENTE' && (
+                      <>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          className="text-success hover:text-success hover:bg-success/10"
+                          onClick={() => handleAprovar(despesa.id)}
+                          disabled={aprovando === despesa.id}
+                        >
+                          {aprovando === despesa.id ? (
+                            <Loader2 className="w-4 h-4 animate-spin" />
+                          ) : (
+                            <Check className="w-4 h-4" />
+                          )}
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          className="text-destructive hover:text-destructive hover:bg-destructive/10"
+                          onClick={() => {
+                            setDespesaParaReprovar(despesa.id)
+                            setShowReprovarModal(true)
+                          }}
+                          disabled={aprovando === despesa.id}
+                        >
+                          <XCircle className="w-4 h-4" />
+                        </Button>
+                      </>
+                    )}
+
+                    {/* Botão excluir - apenas para vendedor e despesas pendentes */}
+                    {!isGestor && despesa.status === 'PENDENTE' && (
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        className="text-destructive hover:text-destructive"
+                        onClick={() => handleDeleteDespesa(despesa.id)}
+                      >
+                        <Trash2 className="w-4 h-4" />
+                      </Button>
+                    )}
                   </div>
                 </div>
               </CardContent>
@@ -806,6 +1087,85 @@ export default function DespesasPage() {
               className="max-w-full max-h-[85vh] object-contain rounded-lg"
             />
           </div>
+        </div>
+      )}
+
+      {/* Modal de Reprovar */}
+      {showReprovarModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center">
+          <div
+            className="absolute inset-0 bg-black/50 backdrop-blur-sm"
+            onClick={() => {
+              setShowReprovarModal(false)
+              setDespesaParaReprovar(null)
+              setMotivoReprovacao('')
+            }}
+          />
+          <Card className="relative z-10 w-full max-w-md mx-4 shadow-xl">
+            <CardHeader className="pb-4">
+              <div className="flex items-center justify-between">
+                <CardTitle className="flex items-center gap-2 text-destructive">
+                  <XCircle className="w-5 h-5" />
+                  Reprovar Despesa
+                </CardTitle>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="h-8 w-8 p-0"
+                  onClick={() => {
+                    setShowReprovarModal(false)
+                    setDespesaParaReprovar(null)
+                    setMotivoReprovacao('')
+                  }}
+                >
+                  <X className="w-4 h-4" />
+                </Button>
+              </div>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="space-y-2">
+                <Label>Motivo da Reprovação (opcional)</Label>
+                <Textarea
+                  placeholder="Informe o motivo da reprovação..."
+                  value={motivoReprovacao}
+                  onChange={(e) => setMotivoReprovacao(e.target.value)}
+                  rows={3}
+                />
+              </div>
+
+              <div className="flex gap-2 pt-4">
+                <Button
+                  variant="outline"
+                  className="flex-1"
+                  onClick={() => {
+                    setShowReprovarModal(false)
+                    setDespesaParaReprovar(null)
+                    setMotivoReprovacao('')
+                  }}
+                >
+                  Cancelar
+                </Button>
+                <Button
+                  variant="destructive"
+                  className="flex-1"
+                  onClick={handleReprovar}
+                  disabled={aprovando !== null}
+                >
+                  {aprovando ? (
+                    <>
+                      <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                      Reprovando...
+                    </>
+                  ) : (
+                    <>
+                      <XCircle className="w-4 h-4 mr-2" />
+                      Reprovar
+                    </>
+                  )}
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
         </div>
       )}
     </div>

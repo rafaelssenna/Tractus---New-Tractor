@@ -59,6 +59,12 @@ enum StatusLiberacaoCusto {
   AGUARDANDO_AJUSTE
 }
 
+enum StatusDespesa {
+  PENDENTE
+  APROVADA
+  REPROVADA
+}
+
 
 enum CondicaoSolo {
   BAIXO_IMPACTO
@@ -108,8 +114,9 @@ model User {
   createdAt     DateTime  @default(now())
   updatedAt     DateTime  @updatedAt
 
-  vendedor      Vendedor?
-  sessions      Session[]
+  vendedor           Vendedor?
+  sessions           Session[]
+  despesasAprovadas  Despesa[]  @relation("DespesasAprovadas")
 
   @@map("users")
 }
@@ -580,6 +587,13 @@ model Despesa {
   validadoPorIA Boolean     @default(false)
   valorExtraido Decimal?    @db.Decimal(10, 2)  // Valor extraído pela IA
   nomeExtraido  String?     // Nome do estabelecimento extraído pela IA
+
+  // Aprovação
+  status           StatusDespesa @default(PENDENTE)
+  aprovadoPorId    String?
+  aprovadoPor      User?         @relation("DespesasAprovadas", fields: [aprovadoPorId], references: [id])
+  dataAprovacao    DateTime?
+  motivoReprovacao String?
 
   createdAt     DateTime    @default(now())
   updatedAt     DateTime    @updatedAt

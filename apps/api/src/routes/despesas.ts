@@ -258,11 +258,12 @@ Para tipoEstabelecimento, analise o nome e os itens para determinar: posto de co
 
   // Listar despesas
   app.get('/', async (request) => {
-    const { vendedorId, mes, ano, tipo } = request.query as {
+    const { vendedorId, mes, ano, tipo, status } = request.query as {
       vendedorId?: string
       mes?: string
       ano?: string
       tipo?: string
+      status?: string
     }
 
     let dataFilter = {}
@@ -281,10 +282,12 @@ Para tipoEstabelecimento, analise o nome e os itens para determinar: posto de co
       where: {
         ...(vendedorId && { vendedorId }),
         ...(tipo && { tipo }),
+        ...(status && { status: status as any }),
         ...dataFilter,
       },
       include: {
-        vendedor: { include: { user: { select: { name: true } } } },
+        vendedor: { include: { user: { select: { name: true, photo: true } } } },
+        aprovadoPor: { select: { name: true } },
       },
       orderBy: { data: 'desc' },
     })
@@ -381,5 +384,51 @@ Para tipoEstabelecimento, analise o nome e os itens para determinar: posto de co
     await db.despesa.delete({ where: { id } })
 
     return reply.status(204).send()
+  })
+
+  // Aprovar despesa
+  app.post('/:id/aprovar', async (request, reply) => {
+    const { id } = request.params as { id: string }
+    const { aprovadoPorId } = request.body as { aprovadoPorId: string }
+
+    const despesa = await db.despesa.update({
+      where: { id },
+      data: {
+        status: 'APROVADA',
+        aprovadoPorId,
+        dataAprovacao: new Date(),
+      },
+      include: {
+        vendedor: { include: { user: { select: { name: true } } } },
+        aprovadoPor: { select: { name: true } },
+      },
+    })
+
+    return despesa
+  })
+
+  // Reprovar despesa
+  app.post('/:id/reprovar', async (request, reply) => {
+    const { id } = request.params as { id: string }
+    const { aprovadoPorId, motivoReprovacao } = request.body as {
+      aprovadoPorId: string
+      motivoReprovacao?: string
+    }
+
+    const despesa = await db.despesa.update({
+      where: { id },
+      data: {
+        status: 'REPROVADA',
+        aprovadoPorId,
+        dataAprovacao: new Date(),
+        motivoReprovacao,
+      },
+      include: {
+        vendedor: { include: { user: { select: { name: true } } } },
+        aprovadoPor: { select: { name: true } },
+      },
+    })
+
+    return despesa
   })
 }
