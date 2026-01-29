@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
+import { useAuth } from '@/contexts/auth-context'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -85,11 +86,15 @@ const diasSemana = [
 
 export default function RotasPage() {
   const router = useRouter()
+  const { user } = useAuth()
   const [rotas, setRotas] = useState<Rota[]>([])
   const [clientes, setClientes] = useState<Cliente[]>([])
   const [vendedores, setVendedores] = useState<Vendedor[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
+
+  // Verificar se é vendedora (COMERCIAL)
+  const isVendedora = user?.role === 'COMERCIAL'
 
   // Selected rota for editing
   const [selectedRota, setSelectedRota] = useState<Rota | null>(null)
@@ -126,7 +131,7 @@ export default function RotasPage() {
     fetchRotas()
     fetchClientes()
     fetchVendedores()
-  }, [])
+  }, [user])
 
   const fetchRotas = async () => {
     try {
@@ -134,9 +139,16 @@ export default function RotasPage() {
       const res = await fetch(`${API_URL}/rotas`)
       if (!res.ok) throw new Error('Erro ao carregar rotas')
       const data = await res.json()
-      setRotas(data)
-      if (data.length > 0 && !selectedRota) {
-        setSelectedRota(data[0])
+
+      // Se é vendedora, filtrar só a rota dela
+      let rotasFiltradas = data
+      if (isVendedora && user?.id) {
+        rotasFiltradas = data.filter((r: Rota) => r.vendedor.userId === user.id)
+      }
+
+      setRotas(rotasFiltradas)
+      if (rotasFiltradas.length > 0 && !selectedRota) {
+        setSelectedRota(rotasFiltradas[0])
       }
     } catch (err: any) {
       setError(err.message)
@@ -363,9 +375,11 @@ export default function RotasPage() {
             Voltar
           </Button>
           <div>
-            <h1 className="text-3xl font-bold tracking-tight">Rotas Semanais</h1>
+            <h1 className="text-3xl font-bold tracking-tight">
+              {isVendedora ? 'Minha Rota' : 'Rotas Semanais'}
+            </h1>
             <p className="text-muted-foreground mt-1">
-              Configure as rotas de visitas do time comercial
+              {isVendedora ? 'Sua rota de visitas semanal' : 'Configure as rotas de visitas do time comercial'}
             </p>
           </div>
         </div>
@@ -374,10 +388,12 @@ export default function RotasPage() {
             <RefreshCw className="w-4 h-4 mr-2" />
             Atualizar
           </Button>
-          <Button size="sm" onClick={() => setShowCreateModal(true)}>
-            <Plus className="w-4 h-4 mr-2" />
-            Nova Rota
-          </Button>
+          {!isVendedora && (
+            <Button size="sm" onClick={() => setShowCreateModal(true)}>
+              <Plus className="w-4 h-4 mr-2" />
+              Nova Rota
+            </Button>
+          )}
         </div>
       </div>
 
@@ -399,59 +415,63 @@ export default function RotasPage() {
         <Card className="border-border/50">
           <CardContent className="flex flex-col items-center justify-center py-12 text-muted-foreground">
             <Route className="w-12 h-12 mb-4" />
-            <p>Nenhuma rota cadastrada</p>
-            <Button variant="outline" size="sm" className="mt-4" onClick={() => setShowCreateModal(true)}>
-              <Plus className="w-4 h-4 mr-2" />
-              Criar Rota
-            </Button>
+            <p>{isVendedora ? 'Voce ainda nao tem uma rota configurada' : 'Nenhuma rota cadastrada'}</p>
+            {!isVendedora && (
+              <Button variant="outline" size="sm" className="mt-4" onClick={() => setShowCreateModal(true)}>
+                <Plus className="w-4 h-4 mr-2" />
+                Criar Rota
+              </Button>
+            )}
           </CardContent>
         </Card>
       ) : (
-        <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
-          {/* Rotas List */}
-          <div className="space-y-4">
-            <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider">
-              Vendedores
-            </h3>
-            {rotas.map((rota) => (
-              <Card
-                key={rota.id}
-                className={`border-border/50 cursor-pointer transition-all hover:border-primary/50 ${
-                  selectedRota?.id === rota.id ? 'border-primary bg-primary/5' : ''
-                }`}
-                onClick={() => setSelectedRota(rota)}
-              >
-                <CardContent className="p-4">
-                  <div className="flex items-center gap-3">
-                    <div className="w-10 h-10 rounded-full bg-primary/20 flex items-center justify-center">
-                      {rota.vendedor.photo ? (
-                        <img
-                          src={rota.vendedor.photo}
-                          alt={rota.vendedor.name}
-                          className="w-10 h-10 rounded-full object-cover"
-                        />
-                      ) : (
-                        <span className="text-sm font-bold text-primary">
-                          {rota.vendedor.name.charAt(0)}
-                        </span>
-                      )}
+        <div className={`grid grid-cols-1 ${isVendedora ? '' : 'lg:grid-cols-4'} gap-6`}>
+          {/* Rotas List - só mostra se NÃO for vendedora */}
+          {!isVendedora && (
+            <div className="space-y-4">
+              <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider">
+                Vendedores
+              </h3>
+              {rotas.map((rota) => (
+                <Card
+                  key={rota.id}
+                  className={`border-border/50 cursor-pointer transition-all hover:border-primary/50 ${
+                    selectedRota?.id === rota.id ? 'border-primary bg-primary/5' : ''
+                  }`}
+                  onClick={() => setSelectedRota(rota)}
+                >
+                  <CardContent className="p-4">
+                    <div className="flex items-center gap-3">
+                      <div className="w-10 h-10 rounded-full bg-primary/20 flex items-center justify-center">
+                        {rota.vendedor.photo ? (
+                          <img
+                            src={rota.vendedor.photo}
+                            alt={rota.vendedor.name}
+                            className="w-10 h-10 rounded-full object-cover"
+                          />
+                        ) : (
+                          <span className="text-sm font-bold text-primary">
+                            {rota.vendedor.name.charAt(0)}
+                          </span>
+                        )}
+                      </div>
+                      <div className="flex-1">
+                        <p className="font-medium">{rota.vendedor.name}</p>
+                        <p className="text-xs text-muted-foreground">{rota.nome}</p>
+                      </div>
+                      <Badge variant="outline" className="text-xs">
+                        {rota.totalClientes}
+                      </Badge>
                     </div>
-                    <div className="flex-1">
-                      <p className="font-medium">{rota.vendedor.name}</p>
-                      <p className="text-xs text-muted-foreground">{rota.nome}</p>
-                    </div>
-                    <Badge variant="outline" className="text-xs">
-                      {rota.totalClientes}
-                    </Badge>
-                  </div>
-                </CardContent>
-              </Card>
-            ))}
-          </div>
+                  </CardContent>
+                </Card>
+              ))}
+            </div>
+          )}
 
           {/* Weekly Schedule */}
           {selectedRota && (
-            <div className="lg:col-span-3">
+            <div className={isVendedora ? '' : 'lg:col-span-3'}>
               <Card className="border-border/50">
                 <CardHeader className="pb-4">
                   <div className="flex items-center justify-between">
@@ -522,31 +542,35 @@ export default function RotasPage() {
                                       >
                                         <Wrench className="w-3 h-3 text-primary" />
                                       </Button>
-                                      <Button
-                                        variant="ghost"
-                                        size="sm"
-                                        className="h-5 w-5 p-0"
-                                        onClick={(e) => {
-                                          e.stopPropagation()
-                                          handleRemoveCliente(rc.id)
-                                        }}
-                                      >
-                                        <X className="w-3 h-3 text-destructive" />
-                                      </Button>
+                                      {!isVendedora && (
+                                        <Button
+                                          variant="ghost"
+                                          size="sm"
+                                          className="h-5 w-5 p-0"
+                                          onClick={(e) => {
+                                            e.stopPropagation()
+                                            handleRemoveCliente(rc.id)
+                                          }}
+                                        >
+                                          <X className="w-3 h-3 text-destructive" />
+                                        </Button>
+                                      )}
                                     </div>
                                   </div>
                                 </div>
                               ))
                             )}
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              className="w-full h-8 text-xs text-muted-foreground hover:text-foreground"
-                              onClick={() => openAddClienteModal(dia.key)}
-                            >
-                              <Plus className="w-3 h-3 mr-1" />
-                              Adicionar
-                            </Button>
+                            {!isVendedora && (
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                className="w-full h-8 text-xs text-muted-foreground hover:text-foreground"
+                                onClick={() => openAddClienteModal(dia.key)}
+                              >
+                                <Plus className="w-3 h-3 mr-1" />
+                                Adicionar
+                              </Button>
+                            )}
                           </div>
                         </div>
                       )

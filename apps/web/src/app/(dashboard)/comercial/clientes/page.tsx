@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
+import { useAuth } from '@/contexts/auth-context'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -80,11 +81,16 @@ const API_URL = process.env.NEXT_PUBLIC_API_URL
 
 export default function ClientesPage() {
   const router = useRouter()
+  const { user, isAdmin, isDiretor } = useAuth()
   const [clientes, setClientes] = useState<Cliente[]>([])
   const [vendedores, setVendedores] = useState<Vendedor[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
   const [search, setSearch] = useState('')
+  const [meuVendedorId, setMeuVendedorId] = useState<string | null>(null)
+
+  // Verificar se é vendedora (COMERCIAL) - mostra só os clientes dela
+  const isVendedora = user?.role === 'COMERCIAL'
 
   // Modal states
   const [showModal, setShowModal] = useState(false)
@@ -111,9 +117,64 @@ export default function ClientesPage() {
   })
 
   useEffect(() => {
-    fetchClientes()
+    if (isVendedora && user?.id) {
+      // Se é vendedora, primeiro busca o vendedor e depois os clientes da rota
+      fetchMeuVendedor()
+    } else {
+      // Admin/Diretor vê todos
+      fetchClientes()
+    }
     fetchVendedores()
-  }, [])
+  }, [user, isVendedora])
+
+  const fetchMeuVendedor = async () => {
+    try {
+      setLoading(true)
+      // Buscar vendedor pelo userId
+      const resVendedores = await fetch(`${API_URL}/vendedores`)
+      if (!resVendedores.ok) throw new Error('Erro ao carregar vendedores')
+      const vendedoresData = await resVendedores.json()
+
+      const meuVendedor = vendedoresData.find((v: any) => v.userId === user?.id)
+      if (meuVendedor) {
+        setMeuVendedorId(meuVendedor.id)
+        // Buscar rota do vendedor
+        const resRotas = await fetch(`${API_URL}/rotas`)
+        if (!resRotas.ok) throw new Error('Erro ao carregar rotas')
+        const rotasData = await resRotas.json()
+
+        const minhaRota = rotasData.find((r: any) => r.vendedor.id === meuVendedor.id)
+        if (minhaRota) {
+          // Extrair clientes únicos da rota
+          const clientesIds = new Set<string>()
+          const clientesDaRota: Cliente[] = []
+
+          for (const dia of ['SEGUNDA', 'TERCA', 'QUARTA', 'QUINTA', 'SEXTA', 'SABADO']) {
+            const clientesDia = minhaRota.clientesPorDia[dia] || []
+            for (const rc of clientesDia) {
+              if (!clientesIds.has(rc.cliente.id)) {
+                clientesIds.add(rc.cliente.id)
+                clientesDaRota.push({
+                  ...rc.cliente,
+                  osAbertas: 0,
+                  vendedor: { id: meuVendedor.id, user: { name: user?.name || '' } }
+                })
+              }
+            }
+          }
+          setClientes(clientesDaRota)
+        } else {
+          setClientes([])
+        }
+      } else {
+        setClientes([])
+      }
+    } catch (err: any) {
+      setError(err.message)
+    } finally {
+      setLoading(false)
+    }
+  }
 
   const fetchClientes = async () => {
     try {
@@ -335,21 +396,25 @@ export default function ClientesPage() {
             Voltar
           </Button>
           <div>
-            <h1 className="text-3xl font-bold tracking-tight">Clientes</h1>
+            <h1 className="text-3xl font-bold tracking-tight">
+              {isVendedora ? 'Meus Clientes' : 'Clientes'}
+            </h1>
             <p className="text-muted-foreground mt-1">
-              Gerencie a carteira de clientes
+              {isVendedora ? 'Clientes da sua rota de visitas' : 'Gerencie a carteira de clientes'}
             </p>
           </div>
         </div>
         <div className="flex gap-2">
-          <Button variant="outline" size="sm" onClick={fetchClientes}>
+          <Button variant="outline" size="sm" onClick={isVendedora ? fetchMeuVendedor : fetchClientes}>
             <RefreshCw className="w-4 h-4 mr-2" />
             Atualizar
           </Button>
-          <Button size="sm" onClick={() => setShowModal(true)}>
-            <Plus className="w-4 h-4 mr-2" />
-            Novo Cliente
-          </Button>
+          {!isVendedora && (
+            <Button size="sm" onClick={() => setShowModal(true)}>
+              <Plus className="w-4 h-4 mr-2" />
+              Novo Cliente
+            </Button>
+          )}
         </div>
       </div>
 
@@ -543,24 +608,28 @@ export default function ClientesPage() {
                           >
                             <Eye className="w-4 h-4" />
                           </Button>
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            className="h-8 w-8 p-0"
-                            onClick={() => handleEditCliente(cliente)}
-                            title="Editar"
-                          >
-                            <Edit className="w-4 h-4" />
-                          </Button>
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            className="h-8 w-8 p-0 text-destructive hover:text-destructive"
-                            onClick={() => handleDeleteCliente(cliente.id)}
-                            title="Excluir"
-                          >
-                            <Trash2 className="w-4 h-4" />
-                          </Button>
+                          {!isVendedora && (
+                            <>
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                className="h-8 w-8 p-0"
+                                onClick={() => handleEditCliente(cliente)}
+                                title="Editar"
+                              >
+                                <Edit className="w-4 h-4" />
+                              </Button>
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                className="h-8 w-8 p-0 text-destructive hover:text-destructive"
+                                onClick={() => handleDeleteCliente(cliente.id)}
+                                title="Excluir"
+                              >
+                                <Trash2 className="w-4 h-4" />
+                              </Button>
+                            </>
+                          )}
                         </div>
                       </td>
                     </tr>
