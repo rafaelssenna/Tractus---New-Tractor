@@ -382,11 +382,33 @@ export default function RotasPage() {
   const handleSaveObservacoes = async () => {
     try {
       setSavingObs(true)
+
+      let textoFinal = editObsForm.observacoes
+
+      // Corrigir texto com IA antes de salvar
+      if (textoFinal && textoFinal.trim()) {
+        try {
+          const aiRes = await fetch(`${API_URL}/ai/corrigir-texto`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ texto: textoFinal }),
+          })
+          if (aiRes.ok) {
+            const aiData = await aiRes.json()
+            if (aiData.corrigido && aiData.textoCorrigido) {
+              textoFinal = aiData.textoCorrigido
+            }
+          }
+        } catch {
+          // Se falhar a correção, usa o texto original
+        }
+      }
+
       const res = await fetch(`${API_URL}/clientes/${editObsForm.clienteId}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          observacoes: editObsForm.observacoes || null,
+          observacoes: textoFinal || null,
         }),
       })
 

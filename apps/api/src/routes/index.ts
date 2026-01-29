@@ -11,6 +11,7 @@ import { metasRoutes } from './metas'
 import { despesasRoutes } from './despesas'
 import { usersRoutes } from './users'
 import { visitasTecnicasRoutes } from './visitas-tecnicas'
+import { aiRoutes } from './ai'
 
 export async function routes(app: FastifyInstance) {
   // API prefix
@@ -27,5 +28,6 @@ export async function routes(app: FastifyInstance) {
     api.register(metasRoutes, { prefix: '/metas' })
     api.register(despesasRoutes, { prefix: '/despesas' })
     api.register(visitasTecnicasRoutes, { prefix: '/visitas-tecnicas' })
+    api.register(aiRoutes, { prefix: '/ai' })
   }, { prefix: '/api' })
 }
