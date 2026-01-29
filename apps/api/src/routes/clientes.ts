@@ -15,6 +15,7 @@ const clienteSchema = z.object({
   estado: z.string().optional(),
   cep: z.string().optional(),
   vendedorId: z.string().optional(),
+  observacoes: z.string().nullable().optional(),
 })
 
 export async function clientesRoutes(app: FastifyInstance) {
