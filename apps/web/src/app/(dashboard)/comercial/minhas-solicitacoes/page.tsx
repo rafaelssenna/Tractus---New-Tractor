@@ -480,7 +480,7 @@ export default function MinhasSolicitacoesPage() {
                   {STATUS_CONFIG[selectedVisita.status].label}
                 </Badge>
                 <span className="text-sm text-muted-foreground">
-                  Criado em {formatDate(selectedVisita.createdAt.split('T')[0])}
+                  Criado em {formatDate(selectedVisita.createdAt.split('T')[0] as string)}
                 </span>
               </div>
 
