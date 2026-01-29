@@ -18,12 +18,15 @@ export async function aiRoutes(app: FastifyInstance) {
     }
 
     try {
+      console.log('Chamando Gemini API com key:', GEMINI_API_KEY.substring(0, 10) + '...')
+
       const response = await fetch(
-        `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${GEMINI_API_KEY}`,
+        'https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent',
         {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
+            'x-goog-api-key': GEMINI_API_KEY,
           },
           body: JSON.stringify({
             contents: [
@@ -45,22 +48,27 @@ Texto: "${texto}"`,
         }
       )
 
+      const responseText = await response.text()
+      console.log('Gemini response status:', response.status)
+      console.log('Gemini response:', responseText.substring(0, 500))
+
       if (!response.ok) {
-        console.error('Erro na API Gemini:', await response.text())
-        return { textoCorrigido: texto, corrigido: false }
+        console.error('Erro na API Gemini:', responseText)
+        return { textoCorrigido: texto, corrigido: false, erro: responseText }
       }
 
-      const data = await response.json()
+      const data = JSON.parse(responseText)
       const textoCorrigido = data.candidates?.[0]?.content?.parts?.[0]?.text?.trim()
 
       if (!textoCorrigido) {
+        console.log('Texto corrigido não encontrado na resposta:', JSON.stringify(data))
         return { textoCorrigido: texto, corrigido: false }
       }
 
       return { textoCorrigido, corrigido: true }
     } catch (error) {
       console.error('Erro ao corrigir texto:', error)
-      return { textoCorrigido: texto, corrigido: false }
+      return { textoCorrigido: texto, corrigido: false, erro: String(error) }
     }
   })
 }
