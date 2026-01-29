@@ -26,7 +26,9 @@ import {
   Copy,
   Route,
   Users,
+  Wrench,
 } from 'lucide-react'
+import { Textarea } from '@/components/ui/textarea'
 
 interface Cliente {
   id: string
@@ -107,6 +109,17 @@ export default function RotasPage() {
   const [addClienteForm, setAddClienteForm] = useState({
     clienteId: '',
     diaSemana: '',
+  })
+
+  // Solicitar Técnico modal
+  const [showSolicitarTecnicoModal, setShowSolicitarTecnicoModal] = useState(false)
+  const [solicitarTecnicoForm, setSolicitarTecnicoForm] = useState({
+    clienteId: '',
+    clienteNome: '',
+    dataVisita: '',
+    equipamentos: [] as string[],
+    novoEquipamento: '',
+    observacao: '',
   })
 
   useEffect(() => {
@@ -252,6 +265,77 @@ export default function RotasPage() {
     setSelectedDia(dia)
     setAddClienteForm({ clienteId: '', diaSemana: dia })
     setShowAddClienteModal(true)
+  }
+
+  const openSolicitarTecnicoModal = (cliente: Cliente) => {
+    const tomorrow = new Date()
+    tomorrow.setDate(tomorrow.getDate() + 1)
+    setSolicitarTecnicoForm({
+      clienteId: cliente.id,
+      clienteNome: cliente.nome,
+      dataVisita: tomorrow.toISOString().split('T')[0] as string,
+      equipamentos: [],
+      novoEquipamento: '',
+      observacao: '',
+    })
+    setShowSolicitarTecnicoModal(true)
+  }
+
+  const handleAddEquipamento = () => {
+    if (solicitarTecnicoForm.novoEquipamento.trim()) {
+      setSolicitarTecnicoForm({
+        ...solicitarTecnicoForm,
+        equipamentos: [...solicitarTecnicoForm.equipamentos, solicitarTecnicoForm.novoEquipamento.trim()],
+        novoEquipamento: '',
+      })
+    }
+  }
+
+  const handleRemoveEquipamento = (index: number) => {
+    setSolicitarTecnicoForm({
+      ...solicitarTecnicoForm,
+      equipamentos: solicitarTecnicoForm.equipamentos.filter((_, i) => i !== index),
+    })
+  }
+
+  const handleSolicitarTecnico = async () => {
+    if (!selectedRota) return
+
+    try {
+      setSaving(true)
+      const res = await fetch(`${API_URL}/visitas-tecnicas`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          clienteId: solicitarTecnicoForm.clienteId,
+          vendedorId: selectedRota.vendedor.id,
+          dataVisita: solicitarTecnicoForm.dataVisita,
+          equipamentos: solicitarTecnicoForm.equipamentos,
+          observacao: solicitarTecnicoForm.observacao || null,
+        }),
+      })
+
+      if (!res.ok) {
+        const data = await res.json()
+        throw new Error(data.error || 'Erro ao solicitar visita tecnica')
+      }
+
+      setShowSolicitarTecnicoModal(false)
+      setSolicitarTecnicoForm({
+        clienteId: '',
+        clienteNome: '',
+        dataVisita: '',
+        equipamentos: [],
+        novoEquipamento: '',
+        observacao: '',
+      })
+      // Show success message
+      alert('Visita tecnica solicitada com sucesso!')
+    } catch (err: any) {
+      setError(err.message)
+    } finally {
+      setSaving(false)
+    }
   }
 
   // Get available clients (not in current day)
@@ -425,17 +509,31 @@ export default function RotasPage() {
                                         </p>
                                       )}
                                     </div>
-                                    <Button
-                                      variant="ghost"
-                                      size="sm"
-                                      className="h-5 w-5 p-0 opacity-0 group-hover:opacity-100 transition-opacity"
-                                      onClick={(e) => {
-                                        e.stopPropagation()
-                                        handleRemoveCliente(rc.id)
-                                      }}
-                                    >
-                                      <X className="w-3 h-3 text-destructive" />
-                                    </Button>
+                                    <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                                      <Button
+                                        variant="ghost"
+                                        size="sm"
+                                        className="h-5 w-5 p-0"
+                                        title="Solicitar Tecnico"
+                                        onClick={(e) => {
+                                          e.stopPropagation()
+                                          openSolicitarTecnicoModal(rc.cliente)
+                                        }}
+                                      >
+                                        <Wrench className="w-3 h-3 text-primary" />
+                                      </Button>
+                                      <Button
+                                        variant="ghost"
+                                        size="sm"
+                                        className="h-5 w-5 p-0"
+                                        onClick={(e) => {
+                                          e.stopPropagation()
+                                          handleRemoveCliente(rc.id)
+                                        }}
+                                      >
+                                        <X className="w-3 h-3 text-destructive" />
+                                      </Button>
+                                    </div>
                                   </div>
                                 </div>
                               ))
@@ -610,6 +708,123 @@ export default function RotasPage() {
                     <>
                       <Plus className="w-4 h-4 mr-2" />
                       Adicionar
+                    </>
+                  )}
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+      )}
+
+      {/* Solicitar Técnico Modal */}
+      {showSolicitarTecnicoModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center">
+          <div
+            className="absolute inset-0 bg-black/50 backdrop-blur-sm"
+            onClick={() => setShowSolicitarTecnicoModal(false)}
+          />
+          <Card className="relative z-10 w-full max-w-lg mx-4 shadow-xl max-h-[90vh] overflow-y-auto">
+            <CardHeader className="pb-4">
+              <div className="flex items-center justify-between">
+                <div>
+                  <CardTitle className="flex items-center gap-2">
+                    <Wrench className="w-5 h-5" />
+                    Solicitar Visita Tecnica
+                  </CardTitle>
+                  <p className="text-sm text-muted-foreground mt-1">
+                    Cliente: {solicitarTecnicoForm.clienteNome}
+                  </p>
+                </div>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="h-8 w-8 p-0"
+                  onClick={() => setShowSolicitarTecnicoModal(false)}
+                >
+                  <X className="w-4 h-4" />
+                </Button>
+              </div>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="space-y-2">
+                <Label>Data da Visita</Label>
+                <Input
+                  type="date"
+                  value={solicitarTecnicoForm.dataVisita}
+                  min={new Date().toISOString().split('T')[0]}
+                  onChange={(e) => setSolicitarTecnicoForm({ ...solicitarTecnicoForm, dataVisita: e.target.value })}
+                />
+              </div>
+
+              <div className="space-y-2">
+                <Label>Equipamentos para Inspecionar</Label>
+                <div className="flex gap-2">
+                  <Input
+                    placeholder="Ex: Trator John Deere 5075E"
+                    value={solicitarTecnicoForm.novoEquipamento}
+                    onChange={(e) => setSolicitarTecnicoForm({ ...solicitarTecnicoForm, novoEquipamento: e.target.value })}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter') {
+                        e.preventDefault()
+                        handleAddEquipamento()
+                      }
+                    }}
+                  />
+                  <Button type="button" variant="outline" onClick={handleAddEquipamento}>
+                    <Plus className="w-4 h-4" />
+                  </Button>
+                </div>
+                {solicitarTecnicoForm.equipamentos.length > 0 && (
+                  <div className="flex flex-wrap gap-2 mt-2">
+                    {solicitarTecnicoForm.equipamentos.map((eq, index) => (
+                      <Badge key={index} variant="secondary" className="flex items-center gap-1">
+                        {eq}
+                        <button
+                          type="button"
+                          onClick={() => handleRemoveEquipamento(index)}
+                          className="ml-1 hover:text-destructive"
+                        >
+                          <X className="w-3 h-3" />
+                        </button>
+                      </Badge>
+                    ))}
+                  </div>
+                )}
+              </div>
+
+              <div className="space-y-2">
+                <Label>Observacao (opcional)</Label>
+                <Textarea
+                  placeholder="Informacoes adicionais para o tecnico..."
+                  value={solicitarTecnicoForm.observacao}
+                  onChange={(e: React.ChangeEvent<HTMLTextAreaElement>) => setSolicitarTecnicoForm({ ...solicitarTecnicoForm, observacao: e.target.value })}
+                  rows={3}
+                />
+              </div>
+
+              <div className="flex gap-2 pt-4">
+                <Button
+                  variant="outline"
+                  className="flex-1"
+                  onClick={() => setShowSolicitarTecnicoModal(false)}
+                >
+                  Cancelar
+                </Button>
+                <Button
+                  className="flex-1"
+                  onClick={handleSolicitarTecnico}
+                  disabled={saving || !solicitarTecnicoForm.dataVisita || solicitarTecnicoForm.equipamentos.length === 0}
+                >
+                  {saving ? (
+                    <>
+                      <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                      Solicitando...
+                    </>
+                  ) : (
+                    <>
+                      <Wrench className="w-4 h-4 mr-2" />
+                      Solicitar Tecnico
                     </>
                   )}
                 </Button>

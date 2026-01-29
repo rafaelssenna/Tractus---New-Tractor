@@ -51,7 +51,6 @@ const allMenuItems: MenuItem[] = [
       { title: 'Clientes', href: '/comercial/clientes', icon: Users },
       { title: 'Vendedores', href: '/comercial/vendedores', icon: UserCheck },
       { title: 'Rotas', href: '/comercial/rotas', icon: Route },
-      { title: 'Visitas Técnicas', href: '/comercial/visitas-tecnicas', icon: Wrench },
       { title: 'Agenda do Técnico', href: '/comercial/agenda-tecnico', icon: Calendar },
     ],
   },
