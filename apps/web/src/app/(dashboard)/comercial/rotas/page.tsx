@@ -55,6 +55,13 @@ interface Vendedor {
   }
 }
 
+interface VisitaHoje {
+  id: string
+  clienteId: string
+  checkIn: string | null
+  checkOut: string | null
+}
+
 interface Rota {
   id: string
   nome: string
@@ -138,27 +145,12 @@ export default function RotasPage() {
   })
   const [savingObs, setSavingObs] = useState(false)
 
-  // Clientes visitados hoje (localStorage)
-  const [clientesVisitadosHoje, setClientesVisitadosHoje] = useState<string[]>([])
+  // Visitas de hoje (do banco de dados)
+  const [visitasHoje, setVisitasHoje] = useState<VisitaHoje[]>([])
+  const [loadingCheckin, setLoadingCheckin] = useState<string | null>(null)
 
   // Clientes com solicitação de inspetor pendente (por clienteId)
   const [clientesComInspecao, setClientesComInspecao] = useState<Record<string, 'PENDENTE' | 'CONFIRMADA' | 'REALIZADA'>>({})
-
-  // Carregar clientes visitados do localStorage
-  useEffect(() => {
-    const hoje = new Date().toISOString().split('T')[0]
-    const storageKey = `visitados_${hoje}`
-    const saved = localStorage.getItem(storageKey)
-    if (saved) {
-      setClientesVisitadosHoje(JSON.parse(saved))
-    }
-    // Limpar dias anteriores
-    Object.keys(localStorage).forEach(key => {
-      if (key.startsWith('visitados_') && key !== storageKey) {
-        localStorage.removeItem(key)
-      }
-    })
-  }, [])
 
   // Helper para pegar o dia da semana atual
   const getDiaSemanaAtual = () => {
@@ -183,12 +175,42 @@ export default function RotasPage() {
     fetchVendedores()
   }, [user])
 
-  // Buscar solicitações de inspeção quando a rota for selecionada
+  // Buscar solicitações de inspeção e visitas de hoje quando a rota for selecionada
   useEffect(() => {
     if (selectedRota?.vendedor?.id) {
       fetchInspecoes()
+      fetchVisitasHoje()
     }
   }, [selectedRota?.vendedor?.id])
+
+  const fetchVisitasHoje = async () => {
+    if (!selectedRota?.vendedor?.id) return
+    try {
+      const hoje = new Date().toISOString().split('T')[0]
+      const res = await fetch(`${API_URL}/visitas?vendedorId=${selectedRota.vendedor.id}&data=${hoje}`)
+      if (!res.ok) return
+      const data = await res.json()
+      setVisitasHoje(data.map((v: any) => ({
+        id: v.id,
+        clienteId: v.clienteId,
+        checkIn: v.checkIn,
+        checkOut: v.checkOut,
+      })))
+    } catch (err) {
+      console.error('Erro ao buscar visitas de hoje:', err)
+    }
+  }
+
+  // Helpers para verificar status de visita
+  const getVisitaCliente = (clienteId: string) => visitasHoje.find(v => v.clienteId === clienteId)
+  const clienteFezCheckIn = (clienteId: string) => {
+    const visita = getVisitaCliente(clienteId)
+    return visita?.checkIn != null
+  }
+  const clienteFezCheckOut = (clienteId: string) => {
+    const visita = getVisitaCliente(clienteId)
+    return visita?.checkOut != null
+  }
 
   const fetchInspecoes = async () => {
     if (!selectedRota?.vendedor?.id) return
@@ -427,20 +449,94 @@ export default function RotasPage() {
     }
   }
 
-  const marcarComoVisitado = (clienteId: string) => {
-    const hoje = new Date().toISOString().split('T')[0]
-    const storageKey = `visitados_${hoje}`
-    const novosVisitados = [...clientesVisitadosHoje, clienteId]
-    setClientesVisitadosHoje(novosVisitados)
-    localStorage.setItem(storageKey, JSON.stringify(novosVisitados))
+  const handleCheckIn = async (clienteId: string) => {
+    if (!selectedRota?.vendedor?.id) return
+    setLoadingCheckin(clienteId)
+    try {
+      const hoje = new Date().toISOString().split('T')[0]
+
+      // Primeiro criar a visita
+      const createRes = await fetch(`${API_URL}/visitas`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          vendedorId: selectedRota.vendedor.id,
+          clienteId,
+          data: hoje,
+        }),
+      })
+
+      if (!createRes.ok) {
+        const data = await createRes.json()
+        throw new Error(data.error || 'Erro ao criar visita')
+      }
+
+      const visita = await createRes.json()
+
+      // Agora fazer o check-in
+      const checkInRes = await fetch(`${API_URL}/visitas/${visita.id}/checkin`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({}),
+      })
+
+      if (!checkInRes.ok) {
+        const data = await checkInRes.json()
+        throw new Error(data.error || 'Erro ao fazer check-in')
+      }
+
+      const visitaAtualizada = await checkInRes.json()
+
+      // Atualizar estado local
+      setVisitasHoje(prev => [...prev, {
+        id: visitaAtualizada.id,
+        clienteId,
+        checkIn: visitaAtualizada.checkIn,
+        checkOut: null,
+      }])
+    } catch (err: any) {
+      setError(err.message)
+    } finally {
+      setLoadingCheckin(null)
+    }
   }
 
-  const desmarcarComoVisitado = (clienteId: string) => {
-    const hoje = new Date().toISOString().split('T')[0]
-    const storageKey = `visitados_${hoje}`
-    const novosVisitados = clientesVisitadosHoje.filter(id => id !== clienteId)
-    setClientesVisitadosHoje(novosVisitados)
-    localStorage.setItem(storageKey, JSON.stringify(novosVisitados))
+  const handleCheckOut = async (clienteId: string) => {
+    const visita = getVisitaCliente(clienteId)
+    if (!visita) return
+
+    setLoadingCheckin(clienteId)
+    try {
+      const res = await fetch(`${API_URL}/visitas/${visita.id}/checkout`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({}),
+      })
+
+      if (!res.ok) {
+        const data = await res.json()
+        throw new Error(data.error || 'Erro ao fazer check-out')
+      }
+
+      const visitaAtualizada = await res.json()
+
+      // Atualizar estado local
+      setVisitasHoje(prev => prev.map(v =>
+        v.id === visita.id
+          ? { ...v, checkOut: visitaAtualizada.checkOut }
+          : v
+      ))
+    } catch (err: any) {
+      setError(err.message)
+    } finally {
+      setLoadingCheckin(null)
+    }
+  }
+
+  const formatTime = (dateStr: string | null) => {
+    if (!dateStr) return ''
+    const date = new Date(dateStr)
+    return date.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })
   }
 
   const handleAddEquipamento = () => {
@@ -503,8 +599,10 @@ export default function RotasPage() {
         throw new Error(data.error || 'Erro ao solicitar inspecao')
       }
 
-      // Marcar como visitado automaticamente
-      marcarComoVisitado(solicitarInspetorForm.clienteId)
+      // Fazer check-in automaticamente se ainda não fez
+      if (!clienteFezCheckIn(solicitarInspetorForm.clienteId)) {
+        await handleCheckIn(solicitarInspetorForm.clienteId)
+      }
 
       // Atualizar mapa de inspeções
       setClientesComInspecao(prev => ({
@@ -690,21 +788,20 @@ export default function RotasPage() {
                             ) : (
                               clientesDia.map((rc, index) => {
                                 const statusInspecao = clientesComInspecao[rc.cliente.id]
-                                const jaVisitou = diaSemanaAtual === dia.key && clientesVisitadosHoje.includes(rc.cliente.id)
+                                const visita = diaSemanaAtual === dia.key ? getVisitaCliente(rc.cliente.id) : null
+                                const fezCheckIn = visita?.checkIn != null
+                                const fezCheckOut = visita?.checkOut != null
 
                                 // Cores baseadas no status
                                 let cardClass = 'bg-card border-border/50 hover:border-primary/30'
                                 let numberClass = 'text-muted-foreground'
 
-                                if (jaVisitou && statusInspecao === 'PENDENTE') {
-                                  cardClass = 'bg-[#FACC15]/10 border-[#FACC15]/30'
-                                  numberClass = 'text-[#FACC15]'
-                                } else if (jaVisitou && statusInspecao === 'CONFIRMADA') {
-                                  cardClass = 'bg-[#3B82F6]/10 border-[#3B82F6]/30'
-                                  numberClass = 'text-[#3B82F6]'
-                                } else if (jaVisitou) {
+                                if (fezCheckOut) {
                                   cardClass = 'bg-success/10 border-success/30'
                                   numberClass = 'text-success'
+                                } else if (fezCheckIn) {
+                                  cardClass = 'bg-[#F97316]/10 border-[#F97316]/30'
+                                  numberClass = 'text-[#F97316]'
                                 } else if (statusInspecao === 'PENDENTE') {
                                   cardClass = 'bg-[#FACC15]/10 border-[#FACC15]/30'
                                   numberClass = 'text-[#FACC15]'
@@ -723,18 +820,20 @@ export default function RotasPage() {
                                   >
                                     <div className="flex items-start gap-2">
                                       <span className={`text-[10px] font-mono ${numberClass}`}>
-                                        {statusInspecao ? (
+                                        {fezCheckOut ? (
+                                          <CheckCircle className="w-3 h-3" />
+                                        ) : fezCheckIn ? (
+                                          <Clock className="w-3 h-3" />
+                                        ) : statusInspecao ? (
                                           statusInspecao === 'PENDENTE' ? <Clock className="w-3 h-3" /> :
                                           statusInspecao === 'CONFIRMADA' ? <Wrench className="w-3 h-3" /> :
-                                          <CheckCircle className="w-3 h-3" />
-                                        ) : jaVisitou ? (
                                           <CheckCircle className="w-3 h-3" />
                                         ) : (
                                           `${index + 1}.`
                                         )}
                                       </span>
                                       <div className="flex-1 min-w-0">
-                                        <p className={`text-xs font-medium truncate ${jaVisitou && !statusInspecao ? 'line-through text-muted-foreground' : ''}`}>
+                                        <p className={`text-xs font-medium truncate ${fezCheckOut ? 'line-through text-muted-foreground' : ''}`}>
                                           {rc.cliente.nome}
                                         </p>
                                         {rc.cliente.cidade && (
@@ -822,28 +921,35 @@ export default function RotasPage() {
                     ) : (
                       <div className="space-y-3">
                         {clientesHoje.map((rc, index) => {
-                          const jaVisitou = clientesVisitadosHoje.includes(rc.cliente.id)
+                          const visita = getVisitaCliente(rc.cliente.id)
+                          const fezCheckIn = visita?.checkIn != null
+                          const fezCheckOut = visita?.checkOut != null
                           const statusInspecao = clientesComInspecao[rc.cliente.id]
+                          const isLoading = loadingCheckin === rc.cliente.id
 
                           // Definir cores baseado no status
                           let borderClass = 'border-border/50 bg-card hover:border-primary/30'
                           let badgeClass = ''
                           let badgeText = ''
 
-                          if (jaVisitou && statusInspecao === 'PENDENTE') {
-                            borderClass = 'border-[#FACC15]/50 bg-[#FACC15]/5'
-                            badgeClass = 'bg-[#FACC15]/20 text-[#FACC15] border-[#FACC15]/30'
-                            badgeText = 'Inspetor Solicitado'
-                          } else if (jaVisitou && statusInspecao === 'CONFIRMADA') {
-                            borderClass = 'border-[#3B82F6]/50 bg-[#3B82F6]/5'
-                            badgeClass = 'bg-[#3B82F6]/20 text-[#3B82F6] border-[#3B82F6]/30'
-                            badgeText = 'Inspeção Confirmada'
-                          } else if (jaVisitou && statusInspecao === 'REALIZADA') {
+                          if (fezCheckOut) {
                             borderClass = 'border-success/50 bg-success/5'
-                            badgeClass = 'bg-success/20 text-success border-success/30'
-                            badgeText = 'Inspeção Realizada'
-                          } else if (jaVisitou) {
-                            borderClass = 'border-success/50 bg-success/5'
+                            if (statusInspecao === 'PENDENTE') {
+                              badgeClass = 'bg-[#FACC15]/20 text-[#FACC15] border-[#FACC15]/30'
+                              badgeText = 'Inspetor Solicitado'
+                            } else if (statusInspecao === 'CONFIRMADA') {
+                              badgeClass = 'bg-[#3B82F6]/20 text-[#3B82F6] border-[#3B82F6]/30'
+                              badgeText = 'Inspeção Confirmada'
+                            } else if (statusInspecao === 'REALIZADA') {
+                              badgeClass = 'bg-success/20 text-success border-success/30'
+                              badgeText = 'Inspeção Realizada'
+                            }
+                          } else if (fezCheckIn) {
+                            borderClass = 'border-[#F97316]/50 bg-[#F97316]/5'
+                            if (statusInspecao === 'PENDENTE') {
+                              badgeClass = 'bg-[#FACC15]/20 text-[#FACC15] border-[#FACC15]/30'
+                              badgeText = 'Inspetor Solicitado'
+                            }
                           } else if (statusInspecao === 'PENDENTE') {
                             borderClass = 'border-[#FACC15]/30 bg-[#FACC15]/5'
                             badgeClass = 'bg-[#FACC15]/20 text-[#FACC15] border-[#FACC15]/30'
@@ -858,18 +964,19 @@ export default function RotasPage() {
                               <div className="flex items-center justify-between gap-4">
                                 <div className="flex items-start gap-3 flex-1 min-w-0">
                                   <div className={`w-8 h-8 rounded-full flex-shrink-0 flex items-center justify-center text-sm font-bold ${
-                                    jaVisitou
-                                      ? statusInspecao === 'PENDENTE' ? 'bg-[#FACC15]/20 text-[#FACC15]'
-                                        : statusInspecao === 'CONFIRMADA' ? 'bg-[#3B82F6]/20 text-[#3B82F6]'
-                                        : 'bg-success/20 text-success'
-                                      : statusInspecao === 'PENDENTE' ? 'bg-[#FACC15]/20 text-[#FACC15]'
-                                        : 'bg-primary/20 text-primary'
+                                    fezCheckOut
+                                      ? 'bg-success/20 text-success'
+                                      : fezCheckIn
+                                        ? 'bg-[#F97316]/20 text-[#F97316]'
+                                        : statusInspecao === 'PENDENTE'
+                                          ? 'bg-[#FACC15]/20 text-[#FACC15]'
+                                          : 'bg-primary/20 text-primary'
                                   }`}>
-                                    {jaVisitou ? <CheckCircle className="w-4 h-4" /> : statusInspecao ? <Wrench className="w-4 h-4" /> : index + 1}
+                                    {fezCheckOut ? <CheckCircle className="w-4 h-4" /> : fezCheckIn ? <Clock className="w-4 h-4" /> : statusInspecao ? <Wrench className="w-4 h-4" /> : index + 1}
                                   </div>
                                   <div className="flex-1 min-w-0">
                                     <div className="flex items-center gap-2 flex-wrap">
-                                      <p className={`font-medium text-base ${jaVisitou ? 'line-through text-muted-foreground' : ''}`}>
+                                      <p className={`font-medium text-base ${fezCheckOut ? 'line-through text-muted-foreground' : ''}`}>
                                         {rc.cliente.nome}
                                       </p>
                                       {badgeText && (
@@ -884,6 +991,23 @@ export default function RotasPage() {
                                         {rc.cliente.cidade}
                                       </p>
                                     )}
+                                    {/* Mostrar horários de check-in e check-out */}
+                                    {visita && (
+                                      <div className="flex items-center gap-3 mt-1 text-xs">
+                                        {visita.checkIn && (
+                                          <span className="text-[#F97316] flex items-center gap-1">
+                                            <Clock className="w-3 h-3" />
+                                            In: {formatTime(visita.checkIn)}
+                                          </span>
+                                        )}
+                                        {visita.checkOut && (
+                                          <span className="text-success flex items-center gap-1">
+                                            <CheckCircle className="w-3 h-3" />
+                                            Out: {formatTime(visita.checkOut)}
+                                          </span>
+                                        )}
+                                      </div>
+                                    )}
                                     {rc.cliente.observacoes && (
                                       <div className="mt-2 p-2 rounded-md bg-[#3B82F6]/10 border border-[#3B82F6]/20 text-sm max-w-md">
                                         <p className="text-xs text-[#3B82F6] font-medium mb-1 flex items-center gap-1">
@@ -896,7 +1020,7 @@ export default function RotasPage() {
                                   </div>
                                 </div>
                                 <div className="flex flex-col gap-2 flex-shrink-0">
-                                  {jaVisitou ? (
+                                  {fezCheckOut ? (
                                     <>
                                       <Button
                                         variant="default"
@@ -907,14 +1031,31 @@ export default function RotasPage() {
                                         <MessageSquare className="w-4 h-4 mr-2" />
                                         {rc.cliente.observacoes ? 'Editar Anotacao' : 'Adicionar Anotacao'}
                                       </Button>
+                                    </>
+                                  ) : fezCheckIn ? (
+                                    <>
                                       <Button
-                                        variant="ghost"
+                                        variant="default"
                                         size="sm"
-                                        onClick={() => desmarcarComoVisitado(rc.cliente.id)}
-                                        className="text-muted-foreground"
+                                        onClick={() => handleCheckOut(rc.cliente.id)}
+                                        disabled={isLoading}
+                                        className="bg-[#F97316] hover:bg-[#F97316]/90"
                                       >
-                                        <X className="w-4 h-4 mr-2" />
-                                        Desfazer
+                                        {isLoading ? (
+                                          <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                                        ) : (
+                                          <CheckCircle className="w-4 h-4 mr-2" />
+                                        )}
+                                        Check-out
+                                      </Button>
+                                      <Button
+                                        variant="default"
+                                        size="sm"
+                                        onClick={() => openEditObsModal(rc.cliente)}
+                                        className="bg-[#3B82F6] hover:bg-[#3B82F6]/90 text-white"
+                                      >
+                                        <MessageSquare className="w-4 h-4 mr-2" />
+                                        {rc.cliente.observacoes ? 'Editar Anotacao' : 'Adicionar Anotacao'}
                                       </Button>
                                     </>
                                   ) : (
@@ -922,11 +1063,16 @@ export default function RotasPage() {
                                       <Button
                                         variant="default"
                                         size="sm"
-                                        onClick={() => marcarComoVisitado(rc.cliente.id)}
+                                        onClick={() => handleCheckIn(rc.cliente.id)}
+                                        disabled={isLoading}
                                         className="bg-success hover:bg-success/90"
                                       >
-                                        <CheckCircle className="w-4 h-4 mr-2" />
-                                        Ja visitei
+                                        {isLoading ? (
+                                          <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                                        ) : (
+                                          <Clock className="w-4 h-4 mr-2" />
+                                        )}
+                                        Check-in
                                       </Button>
                                       {!statusInspecao && (
                                         <Button
