@@ -678,7 +678,7 @@ export default function DespesasPage() {
                 <Button
                   className="flex-1"
                   onClick={handleSubmit}
-                  disabled={saving || !formData.tipo || !formData.valor || (analiseResultado && (!analiseResultado.valido || !analiseResultado.valorConfere))}
+                  disabled={saving || !formData.tipo || !formData.valor || !!(analiseResultado && (!analiseResultado.valido || !analiseResultado.valorConfere))}
                 >
                   {saving ? (
                     <>
