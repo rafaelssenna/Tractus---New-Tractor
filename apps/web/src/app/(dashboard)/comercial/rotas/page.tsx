@@ -449,11 +449,37 @@ export default function RotasPage() {
     }
   }
 
+  // Helper para obter geolocalização
+  const getGeolocation = (): Promise<{ latitude: number; longitude: number } | null> => {
+    return new Promise((resolve) => {
+      if (!navigator.geolocation) {
+        resolve(null)
+        return
+      }
+      navigator.geolocation.getCurrentPosition(
+        (position) => {
+          resolve({
+            latitude: position.coords.latitude,
+            longitude: position.coords.longitude,
+          })
+        },
+        () => {
+          // Se falhar, continua sem geolocalização
+          resolve(null)
+        },
+        { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 }
+      )
+    })
+  }
+
   const handleCheckIn = async (clienteId: string) => {
     if (!selectedRota?.vendedor?.id) return
     setLoadingCheckin(clienteId)
     try {
       const hoje = new Date().toISOString().split('T')[0]
+
+      // Capturar geolocalização
+      const geo = await getGeolocation()
 
       // Primeiro criar a visita
       const createRes = await fetch(`${API_URL}/visitas`, {
@@ -473,11 +499,14 @@ export default function RotasPage() {
 
       const visita = await createRes.json()
 
-      // Agora fazer o check-in
+      // Agora fazer o check-in com geolocalização
       const checkInRes = await fetch(`${API_URL}/visitas/${visita.id}/checkin`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({}),
+        body: JSON.stringify({
+          latitude: geo?.latitude,
+          longitude: geo?.longitude,
+        }),
       })
 
       if (!checkInRes.ok) {
@@ -507,10 +536,16 @@ export default function RotasPage() {
 
     setLoadingCheckin(clienteId)
     try {
+      // Capturar geolocalização
+      const geo = await getGeolocation()
+
       const res = await fetch(`${API_URL}/visitas/${visita.id}/checkout`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({}),
+        body: JSON.stringify({
+          latitude: geo?.latitude,
+          longitude: geo?.longitude,
+        }),
       })
 
       if (!res.ok) {
