@@ -598,8 +598,8 @@ model VisitaTecnica {
   clienteId     String
   cliente       Cliente             @relation(fields: [clienteId], references: [id], onDelete: Cascade)
 
-  // Data da visita (escolhida pela vendedora)
-  dataVisita    DateTime            @db.Date
+  // Data da visita (definida pelo inspetor)
+  dataVisita    DateTime?           @db.Date
 
   // Equipamentos (texto livre, múltiplos)
   equipamentos  String[]
