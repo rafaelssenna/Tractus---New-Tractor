@@ -92,7 +92,7 @@ const vendasPorMes = [
   { mes: 'Jan', valor: 85000 },
 ]
 
-const getDiaSemanaAtual = () => {
+const getDiaSemanaAtual = (): string => {
   const diasMap: Record<number, string> = {
     0: 'DOMINGO',
     1: 'SEGUNDA',
@@ -102,7 +102,7 @@ const getDiaSemanaAtual = () => {
     5: 'SEXTA',
     6: 'SABADO',
   }
-  return diasMap[new Date().getDay()]
+  return diasMap[new Date().getDay()] || 'DOMINGO'
 }
 
 const diasSemanaLabel: Record<string, string> = {
