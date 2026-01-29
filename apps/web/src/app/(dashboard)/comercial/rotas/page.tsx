@@ -757,17 +757,19 @@ export default function RotasPage() {
                                         Ja visitei
                                       </Button>
                                       <Button
-                                        variant="outline"
+                                        variant="default"
                                         size="sm"
                                         onClick={() => openSolicitarInspetorModal(rc.cliente)}
+                                        className="bg-primary hover:bg-primary/90 text-primary-foreground"
                                       >
                                         <Wrench className="w-4 h-4 mr-2" />
                                         Solicitar Inspetor
                                       </Button>
                                       <Button
-                                        variant="outline"
+                                        variant="default"
                                         size="sm"
                                         onClick={() => openEditObsModal(rc.cliente)}
+                                        className="bg-[#3B82F6] hover:bg-[#3B82F6]/90 text-white"
                                       >
                                         <MessageSquare className="w-4 h-4 mr-2" />
                                         {rc.cliente.observacoes ? 'Editar Anotacao' : 'Adicionar Anotacao'}
