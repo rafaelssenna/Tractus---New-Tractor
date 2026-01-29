@@ -109,19 +109,26 @@ export default function MinhasSolicitacoesPage() {
   const fetchMinhasVisitas = async () => {
     try {
       setLoading(true)
-      // Buscar o vendedor associado ao usuario
-      const vendedorRes = await fetch(`${API_URL}/vendedores/me/${user?.id}`)
-      if (!vendedorRes.ok) {
-        // Se nao encontrar vendedor, pode ser que o usuario nao esteja vinculado
+      // Buscar todos os vendedores e encontrar o do usuario atual
+      const vendedoresRes = await fetch(`${API_URL}/vendedores`)
+      if (!vendedoresRes.ok) {
         setVisitas([])
         setLoading(false)
         return
       }
-      const vendedor = await vendedorRes.json()
+      const vendedores = await vendedoresRes.json()
+      const meuVendedor = vendedores.find((v: any) => v.userId === user?.id)
+
+      if (!meuVendedor) {
+        // Usuario nao esta vinculado a nenhum vendedor
+        setVisitas([])
+        setLoading(false)
+        return
+      }
 
       // Buscar visitas do vendedor
       const params = new URLSearchParams()
-      params.append('vendedorId', vendedor.id)
+      params.append('vendedorId', meuVendedor.id)
       if (filterStatus) params.append('status', filterStatus)
 
       const res = await fetch(`${API_URL}/visitas-tecnicas?${params}`)
