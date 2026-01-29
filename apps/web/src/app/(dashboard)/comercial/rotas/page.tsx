@@ -726,34 +726,12 @@ export default function RotasPage() {
                                         {rc.cliente.cidade}
                                       </p>
                                     )}
-                                    <div className="mt-2">
-                                      {rc.cliente.observacoes ? (
-                                        <div className="p-2 rounded-md bg-muted/50 text-sm">
-                                          <div className="flex items-center justify-between mb-1">
-                                            <p className="text-xs text-muted-foreground font-medium">Minhas anotacoes:</p>
-                                            <Button
-                                              variant="ghost"
-                                              size="sm"
-                                              className="h-6 w-6 p-0"
-                                              onClick={() => openEditObsModal(rc.cliente)}
-                                            >
-                                              <Pencil className="w-3 h-3 text-muted-foreground hover:text-foreground" />
-                                            </Button>
-                                          </div>
-                                          <p className="text-foreground">{rc.cliente.observacoes}</p>
-                                        </div>
-                                      ) : (
-                                        <Button
-                                          variant="ghost"
-                                          size="sm"
-                                          className="text-xs text-muted-foreground hover:text-foreground"
-                                          onClick={() => openEditObsModal(rc.cliente)}
-                                        >
-                                          <MessageSquare className="w-3 h-3 mr-1" />
-                                          Adicionar anotacao
-                                        </Button>
-                                      )}
-                                    </div>
+                                    {rc.cliente.observacoes && (
+                                      <div className="mt-2 p-2 rounded-md bg-muted/50 text-sm">
+                                        <p className="text-xs text-muted-foreground font-medium mb-1">Minhas anotacoes:</p>
+                                        <p className="text-foreground">{rc.cliente.observacoes}</p>
+                                      </div>
+                                    )}
                                   </div>
                                 </div>
                                 <div className="flex flex-col gap-2">
@@ -785,6 +763,14 @@ export default function RotasPage() {
                                       >
                                         <Wrench className="w-4 h-4 mr-2" />
                                         Solicitar Inspetor
+                                      </Button>
+                                      <Button
+                                        variant="outline"
+                                        size="sm"
+                                        onClick={() => openEditObsModal(rc.cliente)}
+                                      >
+                                        <MessageSquare className="w-4 h-4 mr-2" />
+                                        {rc.cliente.observacoes ? 'Editar Anotacao' : 'Adicionar Anotacao'}
                                       </Button>
                                     </>
                                   )}
