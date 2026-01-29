@@ -7,7 +7,7 @@ const visitaTecnicaSchema = z.object({
   clienteId: z.string(),
   dataVisita: z.string().transform((v) => new Date(v)).optional(),
   equipamentos: z.array(z.string()).min(1, 'Informe pelo menos um equipamento'),
-  observacao: z.string().optional(),
+  observacao: z.string().nullable().optional(),
 })
 
 const cancelarSchema = z.object({
