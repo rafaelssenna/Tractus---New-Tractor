@@ -141,6 +141,9 @@ export default function RotasPage() {
   // Clientes visitados hoje (localStorage)
   const [clientesVisitadosHoje, setClientesVisitadosHoje] = useState<string[]>([])
 
+  // Clientes com solicitação de inspetor pendente (por clienteId)
+  const [clientesComInspecao, setClientesComInspecao] = useState<Record<string, 'PENDENTE' | 'CONFIRMADA' | 'REALIZADA'>>({})
+
   // Carregar clientes visitados do localStorage
   useEffect(() => {
     const hoje = new Date().toISOString().split('T')[0]
@@ -179,6 +182,36 @@ export default function RotasPage() {
     fetchClientes()
     fetchVendedores()
   }, [user])
+
+  // Buscar solicitações de inspeção quando a rota for selecionada
+  useEffect(() => {
+    if (selectedRota?.vendedor?.id) {
+      fetchInspecoes()
+    }
+  }, [selectedRota?.vendedor?.id])
+
+  const fetchInspecoes = async () => {
+    if (!selectedRota?.vendedor?.id) return
+    try {
+      const res = await fetch(`${API_URL}/visitas-tecnicas?vendedorId=${selectedRota.vendedor.id}`)
+      if (!res.ok) return
+      const data = await res.json()
+      // Mapear clienteId -> status (apenas não canceladas)
+      const mapa: Record<string, 'PENDENTE' | 'CONFIRMADA' | 'REALIZADA'> = {}
+      data.forEach((vt: any) => {
+        if (vt.status !== 'CANCELADA') {
+          // Se já existe, priorizar: REALIZADA > CONFIRMADA > PENDENTE
+          const atual = mapa[vt.clienteId]
+          if (!atual || vt.status === 'REALIZADA' || (vt.status === 'CONFIRMADA' && atual === 'PENDENTE')) {
+            mapa[vt.clienteId] = vt.status
+          }
+        }
+      })
+      setClientesComInspecao(mapa)
+    } catch (err) {
+      console.error('Erro ao buscar inspeções:', err)
+    }
+  }
 
   const fetchRotas = async () => {
     try {
@@ -427,6 +460,15 @@ export default function RotasPage() {
         throw new Error(data.error || 'Erro ao solicitar inspecao')
       }
 
+      // Marcar como visitado automaticamente
+      marcarComoVisitado(solicitarInspetorForm.clienteId)
+
+      // Atualizar mapa de inspeções
+      setClientesComInspecao(prev => ({
+        ...prev,
+        [solicitarInspetorForm.clienteId]: 'PENDENTE'
+      }))
+
       setShowSolicitarInspetorModal(false)
       setSolicitarInspetorForm({
         clienteId: '',
@@ -436,7 +478,7 @@ export default function RotasPage() {
         observacao: '',
       })
       // Show success message
-      alert('Solicitacao enviada com sucesso! O inspetor definira a data.')
+      alert('Solicitacao enviada com sucesso! Cliente marcado como visitado.')
     } catch (err: any) {
       setError(err.message)
     } finally {
@@ -603,56 +645,95 @@ export default function RotasPage() {
                                 Sem visitas
                               </p>
                             ) : (
-                              clientesDia.map((rc, index) => (
-                                <div
-                                  key={rc.id}
-                                  className="group p-2 rounded-md bg-card border border-border/50 hover:border-primary/30 transition-colors"
-                                >
-                                  <div className="flex items-start gap-2">
-                                    <span className="text-[10px] text-muted-foreground font-mono">
-                                      {index + 1}.
-                                    </span>
-                                    <div className="flex-1 min-w-0">
-                                      <p className="text-xs font-medium truncate">
-                                        {rc.cliente.nome}
-                                      </p>
-                                      {rc.cliente.cidade && (
-                                        <p className="text-[10px] text-muted-foreground flex items-center gap-0.5">
-                                          <MapPin className="w-2.5 h-2.5" />
-                                          {rc.cliente.cidade}
+                              clientesDia.map((rc, index) => {
+                                const statusInspecao = clientesComInspecao[rc.cliente.id]
+                                const jaVisitou = diaSemanaAtual === dia.key && clientesVisitadosHoje.includes(rc.cliente.id)
+
+                                // Cores baseadas no status
+                                let cardClass = 'bg-card border-border/50 hover:border-primary/30'
+                                let numberClass = 'text-muted-foreground'
+
+                                if (jaVisitou && statusInspecao === 'PENDENTE') {
+                                  cardClass = 'bg-[#FACC15]/10 border-[#FACC15]/30'
+                                  numberClass = 'text-[#FACC15]'
+                                } else if (jaVisitou && statusInspecao === 'CONFIRMADA') {
+                                  cardClass = 'bg-[#3B82F6]/10 border-[#3B82F6]/30'
+                                  numberClass = 'text-[#3B82F6]'
+                                } else if (jaVisitou) {
+                                  cardClass = 'bg-success/10 border-success/30'
+                                  numberClass = 'text-success'
+                                } else if (statusInspecao === 'PENDENTE') {
+                                  cardClass = 'bg-[#FACC15]/10 border-[#FACC15]/30'
+                                  numberClass = 'text-[#FACC15]'
+                                } else if (statusInspecao === 'CONFIRMADA') {
+                                  cardClass = 'bg-[#3B82F6]/10 border-[#3B82F6]/30'
+                                  numberClass = 'text-[#3B82F6]'
+                                } else if (statusInspecao === 'REALIZADA') {
+                                  cardClass = 'bg-success/10 border-success/30'
+                                  numberClass = 'text-success'
+                                }
+
+                                return (
+                                  <div
+                                    key={rc.id}
+                                    className={`group p-2 rounded-md border transition-colors ${cardClass}`}
+                                  >
+                                    <div className="flex items-start gap-2">
+                                      <span className={`text-[10px] font-mono ${numberClass}`}>
+                                        {statusInspecao ? (
+                                          statusInspecao === 'PENDENTE' ? <Clock className="w-3 h-3" /> :
+                                          statusInspecao === 'CONFIRMADA' ? <Wrench className="w-3 h-3" /> :
+                                          <CheckCircle className="w-3 h-3" />
+                                        ) : jaVisitou ? (
+                                          <CheckCircle className="w-3 h-3" />
+                                        ) : (
+                                          `${index + 1}.`
+                                        )}
+                                      </span>
+                                      <div className="flex-1 min-w-0">
+                                        <p className={`text-xs font-medium truncate ${jaVisitou && !statusInspecao ? 'line-through text-muted-foreground' : ''}`}>
+                                          {rc.cliente.nome}
                                         </p>
-                                      )}
-                                    </div>
-                                    <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                                      <Button
-                                        variant="ghost"
-                                        size="sm"
-                                        className="h-5 w-5 p-0"
-                                        title="Solicitar Inspetor"
-                                        onClick={(e) => {
-                                          e.stopPropagation()
-                                          openSolicitarInspetorModal(rc.cliente)
-                                        }}
-                                      >
-                                        <Wrench className="w-3 h-3 text-primary" />
-                                      </Button>
-                                      {!isVendedora && (
-                                        <Button
-                                          variant="ghost"
-                                          size="sm"
-                                          className="h-5 w-5 p-0"
-                                          onClick={(e) => {
-                                            e.stopPropagation()
-                                            handleRemoveCliente(rc.id)
-                                          }}
-                                        >
-                                          <X className="w-3 h-3 text-destructive" />
-                                        </Button>
-                                      )}
+                                        {rc.cliente.cidade && (
+                                          <p className="text-[10px] text-muted-foreground flex items-center gap-0.5">
+                                            <MapPin className="w-2.5 h-2.5" />
+                                            {rc.cliente.cidade}
+                                          </p>
+                                        )}
+                                      </div>
+                                      <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                                        {!statusInspecao && (
+                                          <Button
+                                            variant="ghost"
+                                            size="sm"
+                                            className="h-5 w-5 p-0"
+                                            title="Solicitar Inspetor"
+                                            onClick={(e) => {
+                                              e.stopPropagation()
+                                              openSolicitarInspetorModal(rc.cliente)
+                                            }}
+                                          >
+                                            <Wrench className="w-3 h-3 text-primary" />
+                                          </Button>
+                                        )}
+                                        {!isVendedora && (
+                                          <Button
+                                            variant="ghost"
+                                            size="sm"
+                                            className="h-5 w-5 p-0"
+                                            onClick={(e) => {
+                                              e.stopPropagation()
+                                              handleRemoveCliente(rc.id)
+                                            }}
+                                          >
+                                            <X className="w-3 h-3 text-destructive" />
+                                          </Button>
+                                        )}
+                                      </div>
                                     </div>
                                   </div>
-                                </div>
-                              ))
+                                )
+                              })
                             )}
                             {!isVendedora && (
                               <Button
@@ -699,28 +780,61 @@ export default function RotasPage() {
                       <div className="space-y-3">
                         {clientesHoje.map((rc, index) => {
                           const jaVisitou = clientesVisitadosHoje.includes(rc.cliente.id)
+                          const statusInspecao = clientesComInspecao[rc.cliente.id]
+
+                          // Definir cores baseado no status
+                          let borderClass = 'border-border/50 bg-card hover:border-primary/30'
+                          let badgeClass = ''
+                          let badgeText = ''
+
+                          if (jaVisitou && statusInspecao === 'PENDENTE') {
+                            borderClass = 'border-[#FACC15]/50 bg-[#FACC15]/5'
+                            badgeClass = 'bg-[#FACC15]/20 text-[#FACC15] border-[#FACC15]/30'
+                            badgeText = 'Inspetor Solicitado'
+                          } else if (jaVisitou && statusInspecao === 'CONFIRMADA') {
+                            borderClass = 'border-[#3B82F6]/50 bg-[#3B82F6]/5'
+                            badgeClass = 'bg-[#3B82F6]/20 text-[#3B82F6] border-[#3B82F6]/30'
+                            badgeText = 'Inspeção Confirmada'
+                          } else if (jaVisitou && statusInspecao === 'REALIZADA') {
+                            borderClass = 'border-success/50 bg-success/5'
+                            badgeClass = 'bg-success/20 text-success border-success/30'
+                            badgeText = 'Inspeção Realizada'
+                          } else if (jaVisitou) {
+                            borderClass = 'border-success/50 bg-success/5'
+                          } else if (statusInspecao === 'PENDENTE') {
+                            borderClass = 'border-[#FACC15]/30 bg-[#FACC15]/5'
+                            badgeClass = 'bg-[#FACC15]/20 text-[#FACC15] border-[#FACC15]/30'
+                            badgeText = 'Inspetor Solicitado'
+                          }
+
                           return (
                             <div
                               key={rc.id}
-                              className={`p-4 rounded-lg border transition-colors ${
-                                jaVisitou
-                                  ? 'border-success/50 bg-success/5'
-                                  : 'border-border/50 bg-card hover:border-primary/30'
-                              }`}
+                              className={`p-4 rounded-lg border transition-colors ${borderClass}`}
                             >
                               <div className="flex items-center justify-between gap-4">
                                 <div className="flex items-start gap-3 flex-1 min-w-0">
                                   <div className={`w-8 h-8 rounded-full flex-shrink-0 flex items-center justify-center text-sm font-bold ${
                                     jaVisitou
-                                      ? 'bg-success/20 text-success'
-                                      : 'bg-primary/20 text-primary'
+                                      ? statusInspecao === 'PENDENTE' ? 'bg-[#FACC15]/20 text-[#FACC15]'
+                                        : statusInspecao === 'CONFIRMADA' ? 'bg-[#3B82F6]/20 text-[#3B82F6]'
+                                        : 'bg-success/20 text-success'
+                                      : statusInspecao === 'PENDENTE' ? 'bg-[#FACC15]/20 text-[#FACC15]'
+                                        : 'bg-primary/20 text-primary'
                                   }`}>
-                                    {jaVisitou ? <CheckCircle className="w-4 h-4" /> : index + 1}
+                                    {jaVisitou ? <CheckCircle className="w-4 h-4" /> : statusInspecao ? <Wrench className="w-4 h-4" /> : index + 1}
                                   </div>
                                   <div className="flex-1 min-w-0">
-                                    <p className={`font-medium text-base ${jaVisitou ? 'line-through text-muted-foreground' : ''}`}>
-                                      {rc.cliente.nome}
-                                    </p>
+                                    <div className="flex items-center gap-2 flex-wrap">
+                                      <p className={`font-medium text-base ${jaVisitou ? 'line-through text-muted-foreground' : ''}`}>
+                                        {rc.cliente.nome}
+                                      </p>
+                                      {badgeText && (
+                                        <Badge variant="outline" className={`text-[10px] ${badgeClass}`}>
+                                          {badgeText}
+                                        </Badge>
+                                      )}
+                                    </div>
                                     {rc.cliente.cidade && (
                                       <p className="text-sm text-muted-foreground flex items-center gap-1 mt-0.5">
                                         <MapPin className="w-3 h-3" />
@@ -740,15 +854,26 @@ export default function RotasPage() {
                                 </div>
                                 <div className="flex flex-col gap-2 flex-shrink-0">
                                   {jaVisitou ? (
-                                    <Button
-                                      variant="ghost"
-                                      size="sm"
-                                      onClick={() => desmarcarComoVisitado(rc.cliente.id)}
-                                      className="text-muted-foreground"
-                                    >
-                                      <X className="w-4 h-4 mr-2" />
-                                      Desfazer
-                                    </Button>
+                                    <>
+                                      <Button
+                                        variant="default"
+                                        size="sm"
+                                        onClick={() => openEditObsModal(rc.cliente)}
+                                        className="bg-[#3B82F6] hover:bg-[#3B82F6]/90 text-white"
+                                      >
+                                        <MessageSquare className="w-4 h-4 mr-2" />
+                                        {rc.cliente.observacoes ? 'Editar Anotacao' : 'Adicionar Anotacao'}
+                                      </Button>
+                                      <Button
+                                        variant="ghost"
+                                        size="sm"
+                                        onClick={() => desmarcarComoVisitado(rc.cliente.id)}
+                                        className="text-muted-foreground"
+                                      >
+                                        <X className="w-4 h-4 mr-2" />
+                                        Desfazer
+                                      </Button>
+                                    </>
                                   ) : (
                                     <>
                                       <Button
@@ -760,15 +885,17 @@ export default function RotasPage() {
                                         <CheckCircle className="w-4 h-4 mr-2" />
                                         Ja visitei
                                       </Button>
-                                      <Button
-                                        variant="default"
-                                        size="sm"
-                                        onClick={() => openSolicitarInspetorModal(rc.cliente)}
-                                        className="bg-primary hover:bg-primary/90 text-primary-foreground"
-                                      >
-                                        <Wrench className="w-4 h-4 mr-2" />
-                                        Solicitar Inspetor
-                                      </Button>
+                                      {!statusInspecao && (
+                                        <Button
+                                          variant="default"
+                                          size="sm"
+                                          onClick={() => openSolicitarInspetorModal(rc.cliente)}
+                                          className="bg-primary hover:bg-primary/90 text-primary-foreground"
+                                        >
+                                          <Wrench className="w-4 h-4 mr-2" />
+                                          Solicitar Inspetor
+                                        </Button>
+                                      )}
                                       <Button
                                         variant="default"
                                         size="sm"
