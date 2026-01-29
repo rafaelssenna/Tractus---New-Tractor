@@ -130,6 +130,8 @@ export default function AgendaInspetorPage() {
   const [showAgendarModal, setShowAgendarModal] = useState(false)
   const [selectedSolicitacao, setSelectedSolicitacao] = useState<VisitaInspecao | null>(null)
   const [dataAgendamento, setDataAgendamento] = useState('')
+  const [inspetores, setInspetores] = useState<{ id: string; name: string }[]>([])
+  const [selectedInspetorId, setSelectedInspetorId] = useState('')
 
   // Abas - inspetor começa na agenda, admin nas solicitações
   const [activeTab, setActiveTab] = useState<'solicitacoes' | 'agenda'>('solicitacoes')
@@ -156,6 +158,7 @@ export default function AgendaInspetorPage() {
   useEffect(() => {
     fetchSolicitacoes()
     fetchAgenda()
+    fetchInspetores()
   }, [])
 
   useEffect(() => {
@@ -196,15 +199,33 @@ export default function AgendaInspetorPage() {
     }
   }
 
+  const fetchInspetores = async () => {
+    try {
+      const res = await fetch(`${API_URL}/visitas-tecnicas/inspetores`)
+      if (!res.ok) throw new Error('Erro ao carregar inspetores')
+      const data: { id: string; name: string }[] = await res.json()
+      setInspetores(data)
+      // Definir Joviano como padrão se existir
+      const joviano = data.find(i => i.name.toLowerCase().includes('joviano'))
+      if (joviano) {
+        setSelectedInspetorId(joviano.id)
+      } else if (data.length > 0) {
+        setSelectedInspetorId(data[0].id)
+      }
+    } catch (err: any) {
+      console.error('Erro ao buscar inspetores:', err)
+    }
+  }
+
   const handleAgendar = async () => {
-    if (!selectedSolicitacao || !dataAgendamento) return
+    if (!selectedSolicitacao || !dataAgendamento || !selectedInspetorId) return
 
     try {
       setActionLoading(selectedSolicitacao.id)
       const res = await fetch(`${API_URL}/visitas-tecnicas/${selectedSolicitacao.id}/agendar`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ dataVisita: dataAgendamento }),
+        body: JSON.stringify({ dataVisita: dataAgendamento, inspetorId: selectedInspetorId }),
       })
 
       if (!res.ok) {
@@ -691,6 +712,23 @@ export default function AgendaInspetorPage() {
                 />
               </div>
 
+              <div className="space-y-2">
+                <Label htmlFor="inspetor">Inspetor</Label>
+                <select
+                  id="inspetor"
+                  value={selectedInspetorId}
+                  onChange={(e) => setSelectedInspetorId(e.target.value)}
+                  className="w-full h-10 px-3 rounded-md border border-input bg-background text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+                >
+                  <option value="">Selecione um inspetor</option>
+                  {inspetores.map((inspetor) => (
+                    <option key={inspetor.id} value={inspetor.id}>
+                      {inspetor.name}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
               <div className="flex gap-2 justify-end">
                 <Button
                   variant="outline"
@@ -704,7 +742,7 @@ export default function AgendaInspetorPage() {
                 </Button>
                 <Button
                   onClick={handleAgendar}
-                  disabled={!dataAgendamento || actionLoading === selectedSolicitacao.id}
+                  disabled={!dataAgendamento || !selectedInspetorId || actionLoading === selectedSolicitacao.id}
                 >
                   {actionLoading === selectedSolicitacao.id ? (
                     <Loader2 className="w-4 h-4 animate-spin mr-2" />

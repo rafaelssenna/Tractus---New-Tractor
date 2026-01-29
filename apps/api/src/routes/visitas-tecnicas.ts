@@ -105,13 +105,35 @@ export async function visitasTecnicasRoutes(app: FastifyInstance) {
     }
   })
 
-  // Agendar visita técnica (admin define a data)
+  // Listar inspetores (usuários com role TECNICO)
+  app.get('/inspetores', async () => {
+    const inspetores = await db.user.findMany({
+      where: {
+        role: 'TECNICO',
+        active: true,
+      },
+      select: {
+        id: true,
+        name: true,
+        photo: true,
+      },
+      orderBy: { name: 'asc' },
+    })
+
+    return inspetores
+  })
+
+  // Agendar visita técnica (admin define a data e o inspetor)
   app.post('/:id/agendar', async (request, reply) => {
     const { id } = request.params as { id: string }
-    const { dataVisita } = request.body as { dataVisita: string }
+    const { dataVisita, inspetorId } = request.body as { dataVisita: string; inspetorId: string }
 
     if (!dataVisita) {
       return reply.status(400).send({ error: 'Data da visita é obrigatória' })
+    }
+
+    if (!inspetorId) {
+      return reply.status(400).send({ error: 'Inspetor é obrigatório' })
     }
 
     const visitaExistente = await db.visitaTecnica.findUnique({ where: { id } })
@@ -123,15 +145,23 @@ export async function visitasTecnicasRoutes(app: FastifyInstance) {
       return reply.status(400).send({ error: 'Não é possível agendar uma visita já realizada ou cancelada' })
     }
 
+    // Verificar se o inspetor existe e é técnico
+    const inspetor = await db.user.findUnique({ where: { id: inspetorId } })
+    if (!inspetor || inspetor.role !== 'TECNICO') {
+      return reply.status(400).send({ error: 'Inspetor inválido' })
+    }
+
     const visitaTecnica = await db.visitaTecnica.update({
       where: { id },
       data: {
         dataVisita: new Date(dataVisita),
+        inspetorId,
         status: 'CONFIRMADA', // Quando admin agenda, já confirma
       },
       include: {
         cliente: { select: { id: true, nome: true } },
         vendedor: { include: { user: { select: { name: true } } } },
+        inspetor: { select: { id: true, name: true } },
       },
     })
 
@@ -185,6 +215,9 @@ export async function visitasTecnicasRoutes(app: FastifyInstance) {
           include: {
             user: { select: { id: true, name: true, photo: true } }
           }
+        },
+        inspetor: {
+          select: { id: true, name: true, photo: true }
         },
       },
       orderBy: { dataVisita: 'asc' },

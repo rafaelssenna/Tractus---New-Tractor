@@ -117,6 +117,7 @@ model User {
   vendedor           Vendedor?
   sessions           Session[]
   despesasAprovadas  Despesa[]  @relation("DespesasAprovadas")
+  visitasComoInspetor VisitaTecnica[] @relation("InspetorVisitas")
 
   @@map("users")
 }
@@ -616,7 +617,11 @@ model VisitaTecnica {
   clienteId     String
   cliente       Cliente             @relation(fields: [clienteId], references: [id], onDelete: Cascade)
 
-  // Data da visita (definida pelo inspetor)
+  // Inspetor designado (definido pelo admin ao agendar)
+  inspetorId    String?
+  inspetor      User?               @relation("InspetorVisitas", fields: [inspetorId], references: [id])
+
+  // Data da visita (definida pelo admin)
   dataVisita    DateTime?           @db.Date
 
   // Equipamentos (texto livre, múltiplos)
