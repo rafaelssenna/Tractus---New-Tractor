@@ -1022,6 +1022,17 @@ export default function RotasPage() {
                                 <div className="flex flex-col gap-2 flex-shrink-0">
                                   {fezCheckOut ? (
                                     <>
+                                      {!statusInspecao && (
+                                        <Button
+                                          variant="default"
+                                          size="sm"
+                                          onClick={() => openSolicitarInspetorModal(rc.cliente)}
+                                          className="bg-primary hover:bg-primary/90 text-primary-foreground"
+                                        >
+                                          <Wrench className="w-4 h-4 mr-2" />
+                                          Solicitar Inspetor
+                                        </Button>
+                                      )}
                                       <Button
                                         variant="default"
                                         size="sm"
@@ -1048,6 +1059,17 @@ export default function RotasPage() {
                                         )}
                                         Check-out
                                       </Button>
+                                      {!statusInspecao && (
+                                        <Button
+                                          variant="default"
+                                          size="sm"
+                                          onClick={() => openSolicitarInspetorModal(rc.cliente)}
+                                          className="bg-primary hover:bg-primary/90 text-primary-foreground"
+                                        >
+                                          <Wrench className="w-4 h-4 mr-2" />
+                                          Solicitar Inspetor
+                                        </Button>
+                                      )}
                                       <Button
                                         variant="default"
                                         size="sm"
