@@ -621,7 +621,7 @@ export default function MinhasSolicitacoesPage() {
             </CardHeader>
             <CardContent className="space-y-4">
               <p className="text-sm text-muted-foreground">
-                Voce esta cancelando a solicitacao de visita tecnica para <strong>{selectedVisita.cliente.nome}</strong> agendada para <strong>{formatDate(selectedVisita.dataVisita)}</strong>.
+                Voce esta cancelando a solicitacao de visita tecnica para <strong>{selectedVisita.cliente.nome}</strong> criada em <strong>{formatDate(selectedVisita.createdAt)}</strong>.
               </p>
 
               <div className="space-y-2">
