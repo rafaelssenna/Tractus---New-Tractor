@@ -172,7 +172,9 @@ export default function MinhasSolicitacoesPage() {
   }
 
   const formatDate = (dateString: string) => {
-    return new Date(dateString + 'T12:00:00').toLocaleDateString('pt-BR', {
+    // Se já tem 'T' na string, extrair só a data
+    const dateOnly = dateString.includes('T') ? dateString.split('T')[0] : dateString
+    return new Date(dateOnly + 'T12:00:00').toLocaleDateString('pt-BR', {
       day: '2-digit',
       month: '2-digit',
       year: 'numeric',
@@ -180,7 +182,9 @@ export default function MinhasSolicitacoesPage() {
   }
 
   const formatDateRelative = (dateString: string) => {
-    const date = new Date(dateString + 'T12:00:00')
+    // Se já tem 'T' na string, extrair só a data
+    const dateOnly = dateString.includes('T') ? dateString.split('T')[0] : dateString
+    const date = new Date(dateOnly + 'T12:00:00')
     const today = new Date()
     today.setHours(0, 0, 0, 0)
     const diffTime = date.getTime() - today.getTime()
@@ -195,13 +199,17 @@ export default function MinhasSolicitacoesPage() {
   }
 
   const filteredVisitas = visitas.filter(
-    (v) =>
-      v.cliente.nome.toLowerCase().includes(search.toLowerCase()) ||
-      v.equipamentos.some(e => e.toLowerCase().includes(search.toLowerCase()))
+    (v) => {
+      // Se nao tiver filtro de status, esconder canceladas
+      if (!filterStatus && v.status === 'CANCELADA') return false
+      // Filtro de busca
+      return v.cliente.nome.toLowerCase().includes(search.toLowerCase()) ||
+        v.equipamentos.some(e => e.toLowerCase().includes(search.toLowerCase()))
+    }
   )
 
   const stats = {
-    total: visitas.length,
+    total: visitas.filter((v) => v.status !== 'CANCELADA').length,
     pendentes: visitas.filter((v) => v.status === 'PENDENTE').length,
     confirmadas: visitas.filter((v) => v.status === 'CONFIRMADA').length,
     realizadas: visitas.filter((v) => v.status === 'REALIZADA').length,
@@ -487,7 +495,7 @@ export default function MinhasSolicitacoesPage() {
                   {STATUS_CONFIG[selectedVisita.status].label}
                 </Badge>
                 <span className="text-sm text-muted-foreground">
-                  Criado em {formatDate(selectedVisita.createdAt.split('T')[0] as string)}
+                  Criado em {formatDate(selectedVisita.createdAt)}
                 </span>
               </div>
 
