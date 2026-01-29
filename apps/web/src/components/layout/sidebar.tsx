@@ -85,7 +85,7 @@ export function Sidebar() {
   const isVendedora = user?.role === 'COMERCIAL'
 
   // Filtrar menus baseado no perfil do usuário
-  const menuItems = allMenuItems.filter(item => {
+  let menuItems = allMenuItems.filter(item => {
     if (!user) return false
     return canAccessRoute(user.role, item.href)
   }).map(item => {
@@ -114,6 +114,26 @@ export function Sidebar() {
     }
     return item
   })
+
+  // Para vendedoras, transformar submenu do Comercial em itens diretos
+  if (isVendedora) {
+    const newMenuItems: MenuItem[] = []
+    menuItems.forEach(item => {
+      if (item.href === '/comercial' && item.submenu) {
+        // Adicionar itens do submenu diretamente
+        item.submenu.forEach(sub => {
+          newMenuItems.push({
+            title: sub.title,
+            href: sub.href,
+            icon: sub.icon,
+          })
+        })
+      } else {
+        newMenuItems.push(item)
+      }
+    })
+    menuItems = newMenuItems
+  }
 
   // Verificar se pode ver link de Usuários (só ADMIN, DIRETOR e RH)
   const canSeeUsers = isAdmin || isDiretor || user?.role === 'RH'

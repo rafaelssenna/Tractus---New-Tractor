@@ -186,9 +186,9 @@ export default function MinhasSolicitacoesPage() {
     const dateOnly = dateString.includes('T') ? dateString.split('T')[0] : dateString
     const date = new Date(dateOnly + 'T12:00:00')
     const today = new Date()
-    today.setHours(0, 0, 0, 0)
+    today.setHours(12, 0, 0, 0)
     const diffTime = date.getTime() - today.getTime()
-    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24))
+    const diffDays = Math.round(diffTime / (1000 * 60 * 60 * 24))
 
     if (diffDays === 0) return 'Hoje'
     if (diffDays === 1) return 'Amanha'
