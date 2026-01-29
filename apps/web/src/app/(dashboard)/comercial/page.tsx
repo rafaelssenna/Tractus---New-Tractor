@@ -252,7 +252,7 @@ export default function ComercialPage() {
     {
       title: 'Clientes Ativos',
       value: clientesCount > 0 ? clientesCount.toString() : totalClientes.toString(),
-      change: `${vendedores.length} vendedores`,
+      change: `${vendedores.length} representantes comerciais`,
       icon: Users,
       color: 'text-info',
       bgColor: 'bg-info/10',
@@ -349,10 +349,10 @@ export default function ComercialPage() {
           <Card className="border-border/50 h-full">
             <CardHeader className="pb-2">
               <div className="flex items-center justify-between">
-                <CardTitle className="text-lg">Metas por Vendedor</CardTitle>
+                <CardTitle className="text-lg">Metas por Representante Comercial</CardTitle>
                 <Link href="/comercial/vendedores">
                   <Button variant="ghost" size="sm" className="text-xs">
-                    Ver vendedores
+                    Ver representantes comerciais
                     <ChevronRight className="w-3 h-3 ml-1" />
                   </Button>
                 </Link>
@@ -362,11 +362,11 @@ export default function ComercialPage() {
               {vendedores.length === 0 ? (
                 <div className="py-8 flex flex-col items-center justify-center text-center">
                   <Users className="w-12 h-12 text-muted-foreground mb-4 opacity-20" />
-                  <p className="text-muted-foreground">Nenhum vendedor cadastrado</p>
+                  <p className="text-muted-foreground">Nenhum representante comercial cadastrado</p>
                   <Link href="/comercial/vendedores">
                     <Button variant="outline" size="sm" className="mt-4">
                       <Plus className="w-4 h-4 mr-2" />
-                      Adicionar Vendedor
+                      Adicionar Representante Comercial
                     </Button>
                   </Link>
                 </div>
@@ -423,7 +423,7 @@ export default function ComercialPage() {
                     <div className="text-center py-8 text-muted-foreground">
                       <Target className="w-12 h-12 mx-auto mb-2 opacity-20" />
                       <p>Nenhuma meta definida para este mês</p>
-                      <p className="text-xs mt-1">Configure as metas dos vendedores</p>
+                      <p className="text-xs mt-1">Configure as metas dos representantes comerciais</p>
                     </div>
                   )}
                 </div>
@@ -572,7 +572,7 @@ export default function ComercialPage() {
               <div className="py-12 flex flex-col items-center justify-center text-center">
                 <Route className="w-12 h-12 text-muted-foreground mb-3 opacity-20" />
                 <p className="text-muted-foreground">Nenhuma rota configurada para hoje</p>
-                <p className="text-xs text-muted-foreground mt-1">Configure as rotas semanais dos vendedores</p>
+                <p className="text-xs text-muted-foreground mt-1">Configure as rotas semanais dos representantes comerciais</p>
                 <Link href="/comercial/rotas">
                   <Button variant="outline" size="sm" className="mt-4">
                     Configurar rotas

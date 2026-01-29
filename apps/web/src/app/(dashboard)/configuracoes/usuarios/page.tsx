@@ -331,7 +331,7 @@ export default function UsuariosPage() {
                       Status
                     </th>
                     <th className="text-center py-3 px-4 text-xs font-semibold text-muted-foreground uppercase tracking-wider">
-                      Vendedor
+                      Representante Comercial
                     </th>
                     <th className="text-right py-3 px-4 text-xs font-semibold text-muted-foreground uppercase tracking-wider">
                       Ações
@@ -390,7 +390,7 @@ export default function UsuariosPage() {
                               className="h-7 text-xs text-muted-foreground hover:text-blue-500"
                               onClick={() => handleMakeVendedor(user.id)}
                             >
-                              Tornar vendedor
+                              Tornar representante comercial
                             </Button>
                           )}
                         </td>

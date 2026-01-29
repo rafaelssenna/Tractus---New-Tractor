@@ -139,7 +139,7 @@ export default function VendedoresPage() {
   }
 
   const handleDeleteVendedor = async (id: string) => {
-    if (!confirm('Tem certeza que deseja remover este vendedor?')) return
+    if (!confirm('Tem certeza que deseja remover este representante comercial?')) return
 
     try {
       const res = await fetch(`${API_URL}/vendedores/${id}`, {
@@ -319,7 +319,7 @@ export default function VendedoresPage() {
             Voltar
           </Button>
           <div>
-            <h1 className="text-3xl font-bold tracking-tight">Vendedores</h1>
+            <h1 className="text-3xl font-bold tracking-tight">Representantes Comerciais</h1>
             <p className="text-muted-foreground mt-1">
               Gerencie a equipe comercial
             </p>
@@ -332,7 +332,7 @@ export default function VendedoresPage() {
           </Button>
           <Button size="sm" onClick={() => setShowModal(true)}>
             <Plus className="w-4 h-4 mr-2" />
-            Adicionar Vendedor
+            Adicionar Representante Comercial
           </Button>
         </div>
       </div>
@@ -353,7 +353,7 @@ export default function VendedoresPage() {
           <CardContent className="p-4">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm text-muted-foreground">Total de Vendedores</p>
+                <p className="text-sm text-muted-foreground">Total de Representantes Comerciais</p>
                 <p className="text-2xl font-bold">{vendedores.length}</p>
               </div>
               <UserCheck className="w-8 h-8 text-muted-foreground" />
@@ -386,10 +386,10 @@ export default function VendedoresPage() {
           ) : vendedores.length === 0 ? (
             <div className="py-12 flex flex-col items-center justify-center text-center">
               <UserCheck className="w-12 h-12 text-muted-foreground mb-4" />
-              <p className="text-muted-foreground">Nenhum vendedor cadastrado</p>
+              <p className="text-muted-foreground">Nenhum representante comercial cadastrado</p>
               <Button size="sm" className="mt-4" onClick={() => setShowModal(true)}>
                 <Plus className="w-4 h-4 mr-2" />
-                Adicionar Vendedor
+                Adicionar Representante Comercial
               </Button>
             </div>
           ) : (
@@ -398,7 +398,7 @@ export default function VendedoresPage() {
                 <thead>
                   <tr className="border-y border-border bg-muted/30">
                     <th className="text-left py-3 px-4 text-xs font-semibold text-muted-foreground uppercase tracking-wider">
-                      Vendedor
+                      Representante Comercial
                     </th>
                     <th className="text-left py-3 px-4 text-xs font-semibold text-muted-foreground uppercase tracking-wider">
                       E-mail
@@ -500,7 +500,7 @@ export default function VendedoresPage() {
               <div className="flex items-center justify-between">
                 <CardTitle className="flex items-center gap-2">
                   <UserCheck className="w-5 h-5" />
-                  Adicionar Vendedor
+                  Adicionar Representante Comercial
                 </CardTitle>
                 <Button
                   variant="ghost"
@@ -517,14 +517,14 @@ export default function VendedoresPage() {
             </CardHeader>
             <CardContent className="space-y-4">
               <p className="text-sm text-muted-foreground">
-                Selecione um usuário existente para torná-lo vendedor.
-                Apenas usuários que ainda não são vendedores aparecem na lista.
+                Selecione um usuário existente para torná-lo representante comercial.
+                Apenas usuários que ainda não são representantes comerciais aparecem na lista.
               </p>
 
               {usuariosDisponiveis.length === 0 ? (
                 <div className="p-4 bg-muted/50 rounded-lg text-center">
                   <p className="text-sm text-muted-foreground">
-                    Não há usuários disponíveis para serem vendedores.
+                    Não há usuários disponíveis para serem representantes comerciais.
                   </p>
                   <p className="text-xs text-muted-foreground mt-1">
                     Crie novos usuários no sistema primeiro.

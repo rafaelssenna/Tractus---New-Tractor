@@ -276,7 +276,7 @@ export function ComercialDashboard() {
         <div>
           <h1 className="text-3xl font-bold tracking-tight">Painel Comercial</h1>
           <p className="text-muted-foreground mt-1">
-            Ola, {user?.name || 'Vendedor'}! Acompanhe suas vendas e visitas
+            Ola, {user?.name || 'Representante Comercial'}! Acompanhe suas vendas e visitas
           </p>
         </div>
         <div className="flex items-center gap-2 text-sm text-muted-foreground">

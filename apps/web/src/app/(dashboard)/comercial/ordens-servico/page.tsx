@@ -350,7 +350,7 @@ export default function OrdensServicoPage() {
                       Proposta
                     </th>
                     <th className="text-left py-3 px-4 text-xs font-semibold text-muted-foreground uppercase tracking-wider">
-                      Vendedor
+                      Representante Comercial
                     </th>
                     <th className="text-right py-3 px-4 text-xs font-semibold text-muted-foreground uppercase tracking-wider">
                       Valor
@@ -572,7 +572,7 @@ export default function OrdensServicoPage() {
                   <p className="font-medium">{selectedOS.cliente.nome}</p>
                 </div>
                 <div className="p-3 bg-muted/30 rounded-lg">
-                  <p className="text-xs text-muted-foreground">Vendedor</p>
+                  <p className="text-xs text-muted-foreground">Representante Comercial</p>
                   <p className="font-medium">{selectedOS.proposta?.vendedor.user.name || '-'}</p>
                 </div>
                 <div className="p-3 bg-muted/30 rounded-lg">

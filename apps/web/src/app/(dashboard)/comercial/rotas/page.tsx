@@ -748,7 +748,7 @@ export default function RotasPage() {
           {!isVendedora && (
             <div className="space-y-4">
               <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider">
-                Vendedores
+                Representantes Comerciais
               </h3>
               {rotas.map((rota) => (
                 <Card
@@ -1220,13 +1220,13 @@ export default function RotasPage() {
               </div>
 
               <div className="space-y-2">
-                <Label>Vendedor</Label>
+                <Label>Representante Comercial</Label>
                 <select
                   className="w-full h-10 px-3 rounded-md border border-input bg-background text-sm"
                   value={newRotaForm.vendedorId}
                   onChange={(e) => setNewRotaForm({ ...newRotaForm, vendedorId: e.target.value })}
                 >
-                  <option value="">Selecione um vendedor</option>
+                  <option value="">Selecione um representante comercial</option>
                   {vendedores.map((v) => (
                     <option key={v.id} value={v.id}>{v.user.name}</option>
                   ))}

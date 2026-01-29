@@ -422,7 +422,7 @@ export default function PropostasPage() {
                       Cliente
                     </th>
                     <th className="text-left py-3 px-4 text-xs font-semibold text-muted-foreground uppercase tracking-wider">
-                      Vendedor
+                      Representante Comercial
                     </th>
                     <th className="text-left py-3 px-4 text-xs font-semibold text-muted-foreground uppercase tracking-wider">
                       Categoria
@@ -572,17 +572,17 @@ export default function PropostasPage() {
                 </select>
               </div>
 
-              {/* Vendedor */}
+              {/* Representante Comercial */}
               <div>
                 <label className="block text-sm font-medium mb-1.5">
-                  Vendedor <span className="text-destructive">*</span>
+                  Representante Comercial <span className="text-destructive">*</span>
                 </label>
                 <select
                   className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
                   value={formData.vendedorId}
                   onChange={(e) => setFormData({ ...formData, vendedorId: e.target.value })}
                 >
-                  <option value="">Selecione um vendedor</option>
+                  <option value="">Selecione um representante comercial</option>
                   {vendedores.map((vendedor) => (
                     <option key={vendedor.id} value={vendedor.id}>
                       {vendedor.user.name}
@@ -731,7 +731,7 @@ export default function PropostasPage() {
                   <p className="font-medium">{selectedProposta.cliente.nome}</p>
                 </div>
                 <div className="p-3 bg-muted/30 rounded-lg">
-                  <p className="text-xs text-muted-foreground">Vendedor</p>
+                  <p className="text-xs text-muted-foreground">Representante Comercial</p>
                   <p className="font-medium">{selectedProposta.vendedor.user.name}</p>
                 </div>
                 <div className="p-3 bg-muted/30 rounded-lg">

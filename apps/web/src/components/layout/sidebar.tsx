@@ -51,7 +51,7 @@ const allMenuItems: MenuItem[] = [
     submenu: [
       { title: 'Visão Geral', href: '/comercial', icon: BarChart3 },
       { title: 'Clientes', href: '/comercial/clientes', icon: Users },
-      { title: 'Vendedores', href: '/comercial/vendedores', icon: UserCheck },
+      { title: 'Representantes Comerciais', href: '/comercial/vendedores', icon: UserCheck },
       { title: 'Rotas', href: '/comercial/rotas', icon: Route },
       { title: 'Despesas', href: '/comercial/despesas', icon: Receipt },
       { title: 'Agenda do Inspetor', href: '/comercial/agenda-inspetor', icon: Calendar },

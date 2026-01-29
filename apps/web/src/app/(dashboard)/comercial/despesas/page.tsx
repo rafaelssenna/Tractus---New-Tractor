@@ -457,7 +457,7 @@ export default function DespesasPage() {
               {isGestor ? 'Gestão de Despesas' : 'Minhas Despesas'}
             </h1>
             <p className="text-muted-foreground mt-1">
-              {isGestor ? 'Aprove ou reprove despesas dos vendedores' : 'Registre suas despesas para reembolso'}
+              {isGestor ? 'Aprove ou reprove despesas dos representantes comerciais' : 'Registre suas despesas para reembolso'}
             </p>
           </div>
         </div>
@@ -628,7 +628,7 @@ export default function DespesasPage() {
                 value={vendedorFilter}
                 onChange={(e) => setVendedorFilter(e.target.value)}
               >
-                <option value="">Todos os vendedores</option>
+                <option value="">Todos os representantes comerciais</option>
                 {vendedores.map((v) => (
                   <option key={v.id} value={v.id}>{v.user.name}</option>
                 ))}

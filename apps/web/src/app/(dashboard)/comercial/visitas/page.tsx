@@ -433,7 +433,7 @@ export default function VisitasPage() {
             <div className="relative flex-1 min-w-[200px]">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
               <Input
-                placeholder="Buscar por cliente ou vendedor..."
+                placeholder="Buscar por cliente ou representante comercial..."
                 className="pl-10 bg-muted/50"
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
@@ -444,7 +444,7 @@ export default function VisitasPage() {
               value={filterVendedor}
               onChange={(e) => setFilterVendedor(e.target.value)}
             >
-              <option value="">Todos vendedores</option>
+              <option value="">Todos representantes comerciais</option>
               {vendedores.map((v) => (
                 <option key={v.id} value={v.id}>{v.user.name}</option>
               ))}
@@ -497,7 +497,7 @@ export default function VisitasPage() {
                       Cliente
                     </th>
                     <th className="text-left py-3 px-4 text-xs font-semibold text-muted-foreground uppercase tracking-wider">
-                      Vendedor
+                      Representante Comercial
                     </th>
                     <th className="text-left py-3 px-4 text-xs font-semibold text-muted-foreground uppercase tracking-wider">
                       Check-in
@@ -675,14 +675,14 @@ export default function VisitasPage() {
               </div>
 
               <div className="space-y-2">
-                <Label>Vendedor</Label>
+                <Label>Representante Comercial</Label>
                 <select
                   className="w-full h-10 px-3 rounded-md border border-input bg-background text-sm"
                   value={formData.vendedorId}
                   onChange={(e) => setFormData({ ...formData, vendedorId: e.target.value })}
                   required
                 >
-                  <option value="">Selecione um vendedor</option>
+                  <option value="">Selecione um representante comercial</option>
                   {vendedores.map((v) => (
                     <option key={v.id} value={v.id}>{v.user.name}</option>
                   ))}

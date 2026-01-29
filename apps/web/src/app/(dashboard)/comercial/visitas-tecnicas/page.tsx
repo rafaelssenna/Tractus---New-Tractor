@@ -621,13 +621,13 @@ export default function VisitasTecnicasPage() {
             <CardContent className="space-y-6">
               <div className="space-y-4">
                 <div className="space-y-2">
-                  <Label>Vendedor Solicitante *</Label>
+                  <Label>Representante Comercial Solicitante *</Label>
                   <select
                     className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
                     value={formData.vendedorId}
                     onChange={(e) => setFormData({ ...formData, vendedorId: e.target.value })}
                   >
-                    <option value="">Selecione o vendedor</option>
+                    <option value="">Selecione o representante comercial</option>
                     {vendedores.map((vendedor) => (
                       <option key={vendedor.id} value={vendedor.id}>
                         {vendedor.user.name}
