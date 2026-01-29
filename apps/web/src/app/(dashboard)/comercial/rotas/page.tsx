@@ -60,6 +60,8 @@ interface VisitaHoje {
   clienteId: string
   checkIn: string | null
   checkOut: string | null
+  enderecoIn: string | null
+  enderecoOut: string | null
 }
 
 interface Rota {
@@ -195,6 +197,8 @@ export default function RotasPage() {
         clienteId: v.clienteId,
         checkIn: v.checkIn,
         checkOut: v.checkOut,
+        enderecoIn: v.enderecoIn,
+        enderecoOut: v.enderecoOut,
       })))
     } catch (err) {
       console.error('Erro ao buscar visitas de hoje:', err)
@@ -522,6 +526,8 @@ export default function RotasPage() {
         clienteId,
         checkIn: visitaAtualizada.checkIn,
         checkOut: null,
+        enderecoIn: visitaAtualizada.enderecoIn,
+        enderecoOut: null,
       }])
     } catch (err: any) {
       setError(err.message)
@@ -558,7 +564,7 @@ export default function RotasPage() {
       // Atualizar estado local
       setVisitasHoje(prev => prev.map(v =>
         v.id === visita.id
-          ? { ...v, checkOut: visitaAtualizada.checkOut }
+          ? { ...v, checkOut: visitaAtualizada.checkOut, enderecoOut: visitaAtualizada.enderecoOut }
           : v
       ))
     } catch (err: any) {
@@ -1028,18 +1034,32 @@ export default function RotasPage() {
                                     )}
                                     {/* Mostrar horários de check-in e check-out */}
                                     {visita && (
-                                      <div className="flex items-center gap-3 mt-1 text-xs">
+                                      <div className="mt-1 text-xs space-y-1">
                                         {visita.checkIn && (
-                                          <span className="text-[#F97316] flex items-center gap-1">
-                                            <Clock className="w-3 h-3" />
-                                            In: {formatTime(visita.checkIn)}
-                                          </span>
+                                          <div className="flex flex-col">
+                                            <span className="text-[#F97316] flex items-center gap-1">
+                                              <Clock className="w-3 h-3" />
+                                              In: {formatTime(visita.checkIn)}
+                                            </span>
+                                            {visita.enderecoIn && (
+                                              <span className="text-muted-foreground ml-4 text-[10px]">
+                                                {visita.enderecoIn}
+                                              </span>
+                                            )}
+                                          </div>
                                         )}
                                         {visita.checkOut && (
-                                          <span className="text-success flex items-center gap-1">
-                                            <CheckCircle className="w-3 h-3" />
-                                            Out: {formatTime(visita.checkOut)}
-                                          </span>
+                                          <div className="flex flex-col">
+                                            <span className="text-success flex items-center gap-1">
+                                              <CheckCircle className="w-3 h-3" />
+                                              Out: {formatTime(visita.checkOut)}
+                                            </span>
+                                            {visita.enderecoOut && (
+                                              <span className="text-muted-foreground ml-4 text-[10px]">
+                                                {visita.enderecoOut}
+                                              </span>
+                                            )}
+                                          </div>
                                         )}
                                       </div>
                                     )}

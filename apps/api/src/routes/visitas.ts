@@ -2,6 +2,57 @@ import type { FastifyInstance } from 'fastify'
 import { z } from 'zod'
 import { db } from '@tractus/database'
 
+// Função para geocodificação reversa usando OpenStreetMap Nominatim
+async function reverseGeocode(latitude: number, longitude: number): Promise<string | null> {
+  try {
+    const response = await fetch(
+      `https://nominatim.openstreetmap.org/reverse?format=json&lat=${latitude}&lon=${longitude}&zoom=18&addressdetails=1`,
+      {
+        headers: {
+          'User-Agent': 'Tractus-ERP/1.0',
+          'Accept-Language': 'pt-BR',
+        },
+      }
+    )
+
+    if (!response.ok) {
+      console.error('Erro na geocodificação:', response.status)
+      return null
+    }
+
+    const data = await response.json()
+    const address = data.address
+
+    if (!address) return null
+
+    // Montar endereço legível: Rua, Bairro - Cidade
+    const parts: string[] = []
+
+    // Rua
+    if (address.road) {
+      parts.push(address.road)
+      if (address.house_number) {
+        parts[0] += `, ${address.house_number}`
+      }
+    }
+
+    // Bairro
+    if (address.suburb || address.neighbourhood) {
+      parts.push(address.suburb || address.neighbourhood)
+    }
+
+    // Cidade
+    if (address.city || address.town || address.village) {
+      parts.push(address.city || address.town || address.village)
+    }
+
+    return parts.length > 0 ? parts.join(' - ') : null
+  } catch (error) {
+    console.error('Erro ao fazer geocodificação reversa:', error)
+    return null
+  }
+}
+
 const visitaSchema = z.object({
   vendedorId: z.string(),
   clienteId: z.string(),
@@ -212,12 +263,19 @@ export async function visitasRoutes(app: FastifyInstance) {
       return reply.status(400).send({ error: 'Check-in já realizado para esta visita' })
     }
 
+    // Buscar endereço via geocodificação reversa (não bloqueia se falhar)
+    let enderecoIn: string | null = null
+    if (latitude && longitude) {
+      enderecoIn = await reverseGeocode(latitude, longitude)
+    }
+
     const visita = await db.visita.update({
       where: { id },
       data: {
         checkIn: new Date(),
         latitudeIn: latitude,
         longitudeIn: longitude,
+        enderecoIn,
       },
       include: {
         cliente: { select: { id: true, nome: true } },
@@ -247,12 +305,19 @@ export async function visitasRoutes(app: FastifyInstance) {
       return reply.status(400).send({ error: 'Check-out já realizado para esta visita' })
     }
 
+    // Buscar endereço via geocodificação reversa (não bloqueia se falhar)
+    let enderecoOut: string | null = null
+    if (latitude && longitude) {
+      enderecoOut = await reverseGeocode(latitude, longitude)
+    }
+
     const visita = await db.visita.update({
       where: { id },
       data: {
         checkOut: new Date(),
         latitudeOut: latitude,
         longitudeOut: longitude,
+        enderecoOut,
         ...(observacoes && { observacoes }),
       },
       include: {

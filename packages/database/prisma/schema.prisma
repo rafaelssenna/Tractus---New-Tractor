@@ -310,6 +310,10 @@ model Visita {
   latitudeOut   Float?
   longitudeOut  Float?
 
+  // Endereços (geocodificação reversa)
+  enderecoIn    String?
+  enderecoOut   String?
+
   // Observações comerciais
   observacoes   String?   @db.Text
 
