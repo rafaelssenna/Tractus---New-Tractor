@@ -21,7 +21,7 @@ export async function aiRoutes(app: FastifyInstance) {
       console.log('Chamando Gemini API com key:', GEMINI_API_KEY.substring(0, 10) + '...')
 
       const response = await fetch(
-        'https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent',
+        'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent',
         {
           method: 'POST',
           headers: {
