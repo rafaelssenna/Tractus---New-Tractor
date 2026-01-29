@@ -25,6 +25,7 @@ import {
   FileText,
   Wrench,
   Calendar,
+  ClipboardCheck,
 } from 'lucide-react'
 import { useState } from 'react'
 import { useAuth, canAccessRoute } from '@/contexts/auth-context'
@@ -81,6 +82,7 @@ export function Sidebar() {
   const [collapsed, setCollapsed] = useState(false)
   const [expandedMenus, setExpandedMenus] = useState<string[]>([])
   const { user, logout, isAdmin, isDiretor } = useAuth()
+  const isVendedora = user?.role === 'COMERCIAL'
 
   // Filtrar menus baseado no perfil do usuário
   const menuItems = allMenuItems.filter(item => {
@@ -89,9 +91,23 @@ export function Sidebar() {
   }).map(item => {
     // Filtrar submenus também
     if (item.submenu) {
+      let filteredSubmenu = item.submenu.filter(sub => canAccessRoute(user?.role, sub.href))
+
+      // Para vendedoras, esconder "Visão Geral" e "Vendedores"
+      if (isVendedora) {
+        filteredSubmenu = filteredSubmenu.filter(sub =>
+          sub.href !== '/comercial' && sub.href !== '/comercial/vendedores'
+        )
+        // Adicionar "Minhas Solicitações" no início para vendedoras
+        filteredSubmenu = [
+          { title: 'Minhas Solicitações', href: '/comercial/minhas-solicitacoes', icon: ClipboardCheck },
+          ...filteredSubmenu
+        ]
+      }
+
       return {
         ...item,
-        submenu: item.submenu.filter(sub => canAccessRoute(user?.role, sub.href))
+        submenu: filteredSubmenu
       }
     }
     return item
