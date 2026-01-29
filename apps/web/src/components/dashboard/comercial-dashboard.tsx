@@ -78,6 +78,7 @@ interface ClienteComPropostas {
   id: string
   nome: string
   cidade: string | null
+  observacoes?: string | null
   _count?: { propostas: number }
   propostas?: { createdAt: string }[]
 }
