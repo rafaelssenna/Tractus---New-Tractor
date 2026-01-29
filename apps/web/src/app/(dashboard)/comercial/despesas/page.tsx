@@ -628,6 +628,22 @@ export default function DespesasPage() {
                 </div>
               )}
 
+              {/* Aviso de bloqueio se comprovante inválido ou valor não confere */}
+              {analiseResultado && (!analiseResultado.valido || !analiseResultado.valorConfere) && (
+                <div className="p-3 rounded-lg bg-destructive/10 border border-destructive/30">
+                  <p className="text-sm text-destructive font-medium">
+                    {!analiseResultado.valido
+                      ? 'Não é possível salvar: a imagem não é um comprovante válido.'
+                      : 'Não é possível salvar: o valor informado não confere com o comprovante.'}
+                  </p>
+                  <p className="text-xs text-destructive/80 mt-1">
+                    {!analiseResultado.valido
+                      ? 'Envie uma foto de um cupom fiscal ou nota fiscal.'
+                      : 'Corrija o valor para continuar.'}
+                  </p>
+                </div>
+              )}
+
               <div className="flex gap-2 pt-4">
                 <Button
                   variant="outline"
@@ -639,7 +655,7 @@ export default function DespesasPage() {
                 <Button
                   className="flex-1"
                   onClick={handleSubmit}
-                  disabled={saving || !formData.tipo || !formData.valor}
+                  disabled={saving || !formData.tipo || !formData.valor || (analiseResultado && (!analiseResultado.valido || !analiseResultado.valorConfere))}
                 >
                   {saving ? (
                     <>
