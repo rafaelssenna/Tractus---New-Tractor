@@ -377,37 +377,38 @@ export default function AgendaInspetorPage() {
           </div>
 
           <div className="flex flex-col gap-2 ml-4">
-            {/* Botões do Admin/Diretor: Agendar e Cancelar */}
+            {/* Botão Agendar - apenas para admin em solicitações sem data */}
             {isGestor && showAgendarButton && visita.status !== 'CANCELADA' && visita.status !== 'REALIZADA' && (
-              <>
-                <Button
-                  size="sm"
-                  onClick={() => openAgendarModal(visita)}
-                  disabled={isLoading}
-                >
-                  {isLoading ? (
-                    <Loader2 className="w-4 h-4 animate-spin" />
-                  ) : (
-                    <>
-                      <CalendarPlus className="w-4 h-4 mr-1" />
-                      Agendar
-                    </>
-                  )}
-                </Button>
-                <Button
-                  size="sm"
-                  variant="outline"
-                  className="text-destructive hover:bg-destructive/10"
-                  onClick={() => handleCancelar(visita.id)}
-                  disabled={isLoading}
-                >
-                  <XCircle className="w-4 h-4 mr-1" />
-                  Cancelar
-                </Button>
-              </>
+              <Button
+                size="sm"
+                onClick={() => openAgendarModal(visita)}
+                disabled={isLoading}
+              >
+                {isLoading ? (
+                  <Loader2 className="w-4 h-4 animate-spin" />
+                ) : (
+                  <>
+                    <CalendarPlus className="w-4 h-4 mr-1" />
+                    Agendar
+                  </>
+                )}
+              </Button>
             )}
-            {/* Botão do Inspetor: Marcar Realizada */}
-            {isInspetor && visita.dataVisita && visita.status === 'CONFIRMADA' && (
+            {/* Botão Cancelar - para admin em qualquer visita não finalizada */}
+            {isGestor && visita.status !== 'CANCELADA' && visita.status !== 'REALIZADA' && (
+              <Button
+                size="sm"
+                variant="outline"
+                className="text-destructive hover:bg-destructive/10"
+                onClick={() => handleCancelar(visita.id)}
+                disabled={isLoading}
+              >
+                <XCircle className="w-4 h-4 mr-1" />
+                Cancelar
+              </Button>
+            )}
+            {/* Botão do Inspetor: Marcar Realizada - para visitas com data (PENDENTE ou CONFIRMADA) */}
+            {isInspetor && visita.dataVisita && (visita.status === 'PENDENTE' || visita.status === 'CONFIRMADA') && (
               <Button
                 size="sm"
                 variant="default"
