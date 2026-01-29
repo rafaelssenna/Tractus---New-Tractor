@@ -28,6 +28,8 @@ import {
   Route,
   Users,
   Wrench,
+  Pencil,
+  MessageSquare,
 } from 'lucide-react'
 import { Textarea } from '@/components/ui/textarea'
 
@@ -126,6 +128,15 @@ export default function RotasPage() {
     novoEquipamento: '',
     observacao: '',
   })
+
+  // Editar Observacoes modal
+  const [showEditObsModal, setShowEditObsModal] = useState(false)
+  const [editObsForm, setEditObsForm] = useState({
+    clienteId: '',
+    clienteNome: '',
+    observacoes: '',
+  })
+  const [savingObs, setSavingObs] = useState(false)
 
   // Clientes visitados hoje (localStorage)
   const [clientesVisitadosHoje, setClientesVisitadosHoje] = useState<string[]>([])
@@ -324,6 +335,41 @@ export default function RotasPage() {
       observacao: '',
     })
     setShowSolicitarInspetorModal(true)
+  }
+
+  const openEditObsModal = (cliente: Cliente) => {
+    setEditObsForm({
+      clienteId: cliente.id,
+      clienteNome: cliente.nome,
+      observacoes: cliente.observacoes || '',
+    })
+    setShowEditObsModal(true)
+  }
+
+  const handleSaveObservacoes = async () => {
+    try {
+      setSavingObs(true)
+      const res = await fetch(`${API_URL}/clientes/${editObsForm.clienteId}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          observacoes: editObsForm.observacoes || null,
+        }),
+      })
+
+      if (!res.ok) {
+        const data = await res.json()
+        throw new Error(data.error || 'Erro ao salvar observacoes')
+      }
+
+      setShowEditObsModal(false)
+      // Recarregar rotas para atualizar os dados do cliente
+      fetchRotas()
+    } catch (err: any) {
+      setError(err.message)
+    } finally {
+      setSavingObs(false)
+    }
   }
 
   const marcarComoVisitado = (clienteId: string) => {
@@ -680,12 +726,34 @@ export default function RotasPage() {
                                         {rc.cliente.cidade}
                                       </p>
                                     )}
-                                    {rc.cliente.observacoes && (
-                                      <div className="mt-2 p-2 rounded-md bg-muted/50 text-sm">
-                                        <p className="text-xs text-muted-foreground font-medium mb-1">Observacoes:</p>
-                                        <p className="text-foreground">{rc.cliente.observacoes}</p>
-                                      </div>
-                                    )}
+                                    <div className="mt-2">
+                                      {rc.cliente.observacoes ? (
+                                        <div className="p-2 rounded-md bg-muted/50 text-sm">
+                                          <div className="flex items-center justify-between mb-1">
+                                            <p className="text-xs text-muted-foreground font-medium">Minhas anotacoes:</p>
+                                            <Button
+                                              variant="ghost"
+                                              size="sm"
+                                              className="h-6 w-6 p-0"
+                                              onClick={() => openEditObsModal(rc.cliente)}
+                                            >
+                                              <Pencil className="w-3 h-3 text-muted-foreground hover:text-foreground" />
+                                            </Button>
+                                          </div>
+                                          <p className="text-foreground">{rc.cliente.observacoes}</p>
+                                        </div>
+                                      ) : (
+                                        <Button
+                                          variant="ghost"
+                                          size="sm"
+                                          className="text-xs text-muted-foreground hover:text-foreground"
+                                          onClick={() => openEditObsModal(rc.cliente)}
+                                        >
+                                          <MessageSquare className="w-3 h-3 mr-1" />
+                                          Adicionar anotacao
+                                        </Button>
+                                      )}
+                                    </div>
                                   </div>
                                 </div>
                                 <div className="flex flex-col gap-2">
@@ -995,6 +1063,81 @@ export default function RotasPage() {
                     <>
                       <Wrench className="w-4 h-4 mr-2" />
                       Solicitar Inspetor
+                    </>
+                  )}
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+      )}
+
+      {/* Editar Observacoes Modal */}
+      {showEditObsModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center">
+          <div
+            className="absolute inset-0 bg-black/50 backdrop-blur-sm"
+            onClick={() => setShowEditObsModal(false)}
+          />
+          <Card className="relative z-10 w-full max-w-lg mx-4 shadow-xl">
+            <CardHeader className="pb-4">
+              <div className="flex items-center justify-between">
+                <div>
+                  <CardTitle className="flex items-center gap-2">
+                    <MessageSquare className="w-5 h-5" />
+                    Minhas Anotacoes
+                  </CardTitle>
+                  <p className="text-sm text-muted-foreground mt-1">
+                    Cliente: {editObsForm.clienteNome}
+                  </p>
+                </div>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="h-8 w-8 p-0"
+                  onClick={() => setShowEditObsModal(false)}
+                >
+                  <X className="w-4 h-4" />
+                </Button>
+              </div>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="p-3 bg-muted/50 rounded-lg text-sm text-muted-foreground">
+                <p>Essas anotacoes sao particulares suas sobre o cliente. Use para lembrar detalhes importantes das conversas.</p>
+              </div>
+
+              <div className="space-y-2">
+                <Label>Anotacoes</Label>
+                <Textarea
+                  placeholder="Ex: Gosta da cor azul, preferencia por tratores menores, conversar sobre financiamento..."
+                  value={editObsForm.observacoes}
+                  onChange={(e: React.ChangeEvent<HTMLTextAreaElement>) => setEditObsForm({ ...editObsForm, observacoes: e.target.value })}
+                  rows={5}
+                />
+              </div>
+
+              <div className="flex gap-2 pt-4">
+                <Button
+                  variant="outline"
+                  className="flex-1"
+                  onClick={() => setShowEditObsModal(false)}
+                >
+                  Cancelar
+                </Button>
+                <Button
+                  className="flex-1"
+                  onClick={handleSaveObservacoes}
+                  disabled={savingObs}
+                >
+                  {savingObs ? (
+                    <>
+                      <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                      Salvando...
+                    </>
+                  ) : (
+                    <>
+                      <CheckCircle className="w-4 h-4 mr-2" />
+                      Salvar
                     </>
                   )}
                 </Button>
