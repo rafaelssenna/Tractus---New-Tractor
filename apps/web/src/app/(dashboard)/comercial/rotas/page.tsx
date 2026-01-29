@@ -707,16 +707,16 @@ export default function RotasPage() {
                                   : 'border-border/50 bg-card hover:border-primary/30'
                               }`}
                             >
-                              <div className="flex items-start justify-between">
-                                <div className="flex items-start gap-3">
-                                  <div className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-bold ${
+                              <div className="flex items-center justify-between gap-4">
+                                <div className="flex items-start gap-3 flex-1 min-w-0">
+                                  <div className={`w-8 h-8 rounded-full flex-shrink-0 flex items-center justify-center text-sm font-bold ${
                                     jaVisitou
                                       ? 'bg-success/20 text-success'
                                       : 'bg-primary/20 text-primary'
                                   }`}>
                                     {jaVisitou ? <CheckCircle className="w-4 h-4" /> : index + 1}
                                   </div>
-                                  <div className="flex-1">
+                                  <div className="flex-1 min-w-0">
                                     <p className={`font-medium text-base ${jaVisitou ? 'line-through text-muted-foreground' : ''}`}>
                                       {rc.cliente.nome}
                                     </p>
@@ -737,7 +737,7 @@ export default function RotasPage() {
                                     )}
                                   </div>
                                 </div>
-                                <div className="flex flex-col gap-2">
+                                <div className="flex flex-col gap-2 flex-shrink-0">
                                   {jaVisitou ? (
                                     <Button
                                       variant="ghost"
