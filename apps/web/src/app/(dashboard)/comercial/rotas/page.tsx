@@ -727,12 +727,12 @@ export default function RotasPage() {
                                       </p>
                                     )}
                                     {rc.cliente.observacoes && (
-                                      <div className="mt-2 p-2 rounded-md bg-[#3B82F6]/10 border border-[#3B82F6]/20 text-sm">
+                                      <div className="mt-2 p-2 rounded-md bg-[#3B82F6]/10 border border-[#3B82F6]/20 text-sm max-w-md">
                                         <p className="text-xs text-[#3B82F6] font-medium mb-1 flex items-center gap-1">
                                           <MessageSquare className="w-3 h-3" />
                                           Ultima anotacao:
                                         </p>
-                                        <p className="text-foreground">{rc.cliente.observacoes}</p>
+                                        <p className="text-foreground line-clamp-3">{rc.cliente.observacoes}</p>
                                       </div>
                                     )}
                                   </div>
