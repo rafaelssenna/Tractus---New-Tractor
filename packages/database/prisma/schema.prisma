@@ -94,6 +94,13 @@ enum StatusOS {
   CANCELADA
 }
 
+enum StatusVisitaTecnica {
+  PENDENTE
+  CONFIRMADA
+  REALIZADA
+  CANCELADA
+}
+
 // ==========================================
 // USUÁRIOS E AUTENTICAÇÃO
 // ==========================================
@@ -158,6 +165,9 @@ model Vendedor {
   // Vendas realizadas
   vendas        Venda[]
 
+  // Visitas técnicas solicitadas
+  visitasTecnicas VisitaTecnica[]
+
   createdAt     DateTime  @default(now())
   updatedAt     DateTime  @updatedAt
 
@@ -195,6 +205,7 @@ model Cliente {
   laudos        Laudo[]
   propostas     Proposta[]
   ordensServico OrdemServico[]
+  visitasTecnicas VisitaTecnica[]
 
   // Rota semanal (dias que deve ser visitado)
   rotaClientes  RotaCliente[]
@@ -567,4 +578,40 @@ model Despesa {
   updatedAt     DateTime    @updatedAt
 
   @@map("despesas")
+}
+
+// ==========================================
+// MÓDULO COMERCIAL - VISITAS TÉCNICAS
+// ==========================================
+
+model VisitaTecnica {
+  id            String              @id @default(cuid())
+
+  // Quem solicitou
+  vendedorId    String
+  vendedor      Vendedor            @relation(fields: [vendedorId], references: [id], onDelete: Cascade)
+
+  // Cliente
+  clienteId     String
+  cliente       Cliente             @relation(fields: [clienteId], references: [id], onDelete: Cascade)
+
+  // Data da visita (escolhida pela vendedora)
+  dataVisita    DateTime            @db.Date
+
+  // Equipamentos (texto livre, múltiplos)
+  equipamentos  String[]
+
+  // Observação da vendedora
+  observacao    String?             @db.Text
+
+  // Status
+  status        StatusVisitaTecnica @default(PENDENTE)
+
+  // Motivo do cancelamento (se houver)
+  motivoCancelamento String?
+
+  createdAt     DateTime            @default(now())
+  updatedAt     DateTime            @updatedAt
+
+  @@map("visitas_tecnicas")
 }

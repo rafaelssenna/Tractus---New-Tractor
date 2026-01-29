@@ -24,6 +24,7 @@ import {
   UserCheck,
   FileText,
   Wrench,
+  Calendar,
 } from 'lucide-react'
 import { useState } from 'react'
 import { useAuth, canAccessRoute } from '@/contexts/auth-context'
@@ -53,6 +54,8 @@ const allMenuItems: MenuItem[] = [
       { title: 'Ordens de Serviço', href: '/comercial/ordens-servico', icon: Wrench },
       { title: 'Visitas', href: '/comercial/visitas', icon: MapPin },
       { title: 'Rotas', href: '/comercial/rotas', icon: Route },
+      { title: 'Visitas Técnicas', href: '/comercial/visitas-tecnicas', icon: Wrench },
+      { title: 'Agenda do Técnico', href: '/comercial/agenda-tecnico', icon: Calendar },
     ],
   },
   {
