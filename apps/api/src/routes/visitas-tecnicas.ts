@@ -5,7 +5,7 @@ import { db } from '@tractus/database'
 const visitaTecnicaSchema = z.object({
   vendedorId: z.string(),
   clienteId: z.string(),
-  dataVisita: z.string().transform((v) => new Date(v)),
+  dataVisita: z.string().transform((v) => new Date(v)).optional(),
   equipamentos: z.array(z.string()).min(1, 'Informe pelo menos um equipamento'),
   observacao: z.string().optional(),
 })

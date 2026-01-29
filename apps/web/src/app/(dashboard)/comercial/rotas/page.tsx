@@ -121,11 +121,27 @@ export default function RotasPage() {
   const [solicitarTecnicoForm, setSolicitarTecnicoForm] = useState({
     clienteId: '',
     clienteNome: '',
-    dataVisita: '',
     equipamentos: [] as string[],
     novoEquipamento: '',
     observacao: '',
   })
+
+  // Helper para pegar o dia da semana atual
+  const getDiaSemanaAtual = () => {
+    const diasMap: Record<number, string> = {
+      0: 'DOMINGO',
+      1: 'SEGUNDA',
+      2: 'TERCA',
+      3: 'QUARTA',
+      4: 'QUINTA',
+      5: 'SEXTA',
+      6: 'SABADO',
+    }
+    return diasMap[new Date().getDay()]
+  }
+
+  const diaSemanaAtual = getDiaSemanaAtual()
+  const clientesHoje = selectedRota?.clientesPorDia[diaSemanaAtual as keyof typeof selectedRota.clientesPorDia] || []
 
   useEffect(() => {
     fetchRotas()
@@ -280,12 +296,9 @@ export default function RotasPage() {
   }
 
   const openSolicitarTecnicoModal = (cliente: Cliente) => {
-    const tomorrow = new Date()
-    tomorrow.setDate(tomorrow.getDate() + 1)
     setSolicitarTecnicoForm({
       clienteId: cliente.id,
       clienteNome: cliente.nome,
-      dataVisita: tomorrow.toISOString().split('T')[0] as string,
       equipamentos: [],
       novoEquipamento: '',
       observacao: '',
@@ -321,7 +334,6 @@ export default function RotasPage() {
         body: JSON.stringify({
           clienteId: solicitarTecnicoForm.clienteId,
           vendedorId: selectedRota.vendedor.id,
-          dataVisita: solicitarTecnicoForm.dataVisita,
           equipamentos: solicitarTecnicoForm.equipamentos,
           observacao: solicitarTecnicoForm.observacao || null,
         }),
@@ -336,13 +348,12 @@ export default function RotasPage() {
       setSolicitarTecnicoForm({
         clienteId: '',
         clienteNome: '',
-        dataVisita: '',
         equipamentos: [],
         novoEquipamento: '',
         observacao: '',
       })
       // Show success message
-      alert('Visita tecnica solicitada com sucesso!')
+      alert('Solicitacao enviada com sucesso! O tecnico definira a data.')
     } catch (err: any) {
       setError(err.message)
     } finally {
@@ -578,6 +589,67 @@ export default function RotasPage() {
                   </div>
                 </CardContent>
               </Card>
+
+              {/* Visitas de Hoje - só para vendedoras */}
+              {isVendedora && (
+                <Card className="border-border/50 mt-6">
+                  <CardHeader className="pb-4">
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <CardTitle className="text-lg flex items-center gap-2">
+                          <Calendar className="w-5 h-5" />
+                          Visitas de Hoje
+                        </CardTitle>
+                        <p className="text-sm text-muted-foreground mt-1">
+                          {diasSemana.find(d => d.key === diaSemanaAtual)?.label || 'Hoje'} - {clientesHoje.length} cliente(s)
+                        </p>
+                      </div>
+                    </div>
+                  </CardHeader>
+                  <CardContent>
+                    {clientesHoje.length === 0 ? (
+                      <div className="text-center py-8 text-muted-foreground">
+                        <Calendar className="w-12 h-12 mx-auto mb-4 opacity-50" />
+                        <p>Nenhuma visita programada para hoje</p>
+                      </div>
+                    ) : (
+                      <div className="space-y-3">
+                        {clientesHoje.map((rc, index) => (
+                          <div
+                            key={rc.id}
+                            className="p-4 rounded-lg border border-border/50 bg-card hover:border-primary/30 transition-colors"
+                          >
+                            <div className="flex items-start justify-between">
+                              <div className="flex items-start gap-3">
+                                <div className="w-8 h-8 rounded-full bg-primary/20 flex items-center justify-center text-sm font-bold text-primary">
+                                  {index + 1}
+                                </div>
+                                <div>
+                                  <p className="font-medium text-base">{rc.cliente.nome}</p>
+                                  {rc.cliente.cidade && (
+                                    <p className="text-sm text-muted-foreground flex items-center gap-1 mt-0.5">
+                                      <MapPin className="w-3 h-3" />
+                                      {rc.cliente.cidade}
+                                    </p>
+                                  )}
+                                </div>
+                              </div>
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                onClick={() => openSolicitarTecnicoModal(rc.cliente)}
+                              >
+                                <Wrench className="w-4 h-4 mr-2" />
+                                Solicitar Tecnico
+                              </Button>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </CardContent>
+                </Card>
+              )}
             </div>
           )}
         </div>
@@ -771,14 +843,8 @@ export default function RotasPage() {
               </div>
             </CardHeader>
             <CardContent className="space-y-4">
-              <div className="space-y-2">
-                <Label>Data da Visita</Label>
-                <Input
-                  type="date"
-                  value={solicitarTecnicoForm.dataVisita}
-                  min={new Date().toISOString().split('T')[0]}
-                  onChange={(e) => setSolicitarTecnicoForm({ ...solicitarTecnicoForm, dataVisita: e.target.value })}
-                />
+              <div className="p-3 bg-muted/50 rounded-lg text-sm text-muted-foreground">
+                <p>A data da visita sera definida pelo tecnico apos avaliar a solicitacao.</p>
               </div>
 
               <div className="space-y-2">
@@ -838,7 +904,7 @@ export default function RotasPage() {
                 <Button
                   className="flex-1"
                   onClick={handleSolicitarTecnico}
-                  disabled={saving || !solicitarTecnicoForm.dataVisita || solicitarTecnicoForm.equipamentos.length === 0}
+                  disabled={saving || solicitarTecnicoForm.equipamentos.length === 0}
                 >
                   {saving ? (
                     <>

@@ -31,7 +31,7 @@ interface VisitaTecnica {
   id: string
   clienteId: string
   vendedorId: string
-  dataVisita: string
+  dataVisita: string | null
   equipamentos: string[]
   observacao: string | null
   status: 'PENDENTE' | 'CONFIRMADA' | 'REALIZADA' | 'CANCELADA'
@@ -387,12 +387,12 @@ export default function MinhasSolicitacoesPage() {
                         </div>
                       </div>
 
-                      {/* Data da Visita */}
+                      {/* Data da Solicitação */}
                       <div className="flex items-center gap-2 mb-3">
                         <Calendar className="w-4 h-4 text-muted-foreground" />
                         <span className="text-sm">
-                          <strong>{formatDateRelative(visita.dataVisita)}</strong>
-                          <span className="text-muted-foreground ml-2">({formatDate(visita.dataVisita)})</span>
+                          Solicitado <strong>{formatDateRelative(visita.createdAt)}</strong>
+                          <span className="text-muted-foreground ml-2">({formatDate(visita.createdAt)})</span>
                         </span>
                       </div>
 
@@ -500,12 +500,12 @@ export default function MinhasSolicitacoesPage() {
               </div>
 
               <div>
-                <p className="text-xs text-muted-foreground uppercase">Data da Visita</p>
+                <p className="text-xs text-muted-foreground uppercase">Data da Solicitacao</p>
                 <p className="text-lg font-medium flex items-center gap-2">
                   <Calendar className="w-4 h-4" />
-                  {formatDateRelative(selectedVisita.dataVisita)}
+                  {formatDateRelative(selectedVisita.createdAt)}
                   <span className="text-sm font-normal text-muted-foreground">
-                    ({formatDate(selectedVisita.dataVisita)})
+                    ({formatDate(selectedVisita.createdAt)})
                   </span>
                 </p>
               </div>
