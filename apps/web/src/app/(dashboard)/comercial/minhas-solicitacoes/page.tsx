@@ -27,7 +27,7 @@ import {
   Wrench,
 } from 'lucide-react'
 
-interface VisitaTecnica {
+interface VisitaInspecao {
   id: string
   clienteId: string
   vendedorId: string
@@ -60,13 +60,13 @@ const API_URL = process.env.NEXT_PUBLIC_API_URL
 const STATUS_CONFIG = {
   PENDENTE: {
     label: 'Aguardando',
-    description: 'Aguardando confirmacao do tecnico',
+    description: 'Aguardando confirmacao do inspetor',
     color: 'bg-yellow-500/20 text-yellow-600 border-yellow-500/30',
     icon: Clock,
   },
   CONFIRMADA: {
     label: 'Confirmada',
-    description: 'Tecnico confirmou a visita',
+    description: 'Inspetor confirmou a visita',
     color: 'bg-blue-500/20 text-blue-600 border-blue-500/30',
     icon: CheckCircle,
   },
@@ -87,7 +87,7 @@ const STATUS_CONFIG = {
 export default function MinhasSolicitacoesPage() {
   const router = useRouter()
   const { user } = useAuth()
-  const [visitas, setVisitas] = useState<VisitaTecnica[]>([])
+  const [visitas, setVisitas] = useState<VisitaInspecao[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
   const [search, setSearch] = useState('')
@@ -96,7 +96,7 @@ export default function MinhasSolicitacoesPage() {
   // Modal states
   const [showViewModal, setShowViewModal] = useState(false)
   const [showCancelModal, setShowCancelModal] = useState(false)
-  const [selectedVisita, setSelectedVisita] = useState<VisitaTecnica | null>(null)
+  const [selectedVisita, setSelectedVisita] = useState<VisitaInspecao | null>(null)
   const [saving, setSaving] = useState(false)
   const [motivoCancelamento, setMotivoCancelamento] = useState('')
 
@@ -231,7 +231,7 @@ export default function MinhasSolicitacoesPage() {
           <div>
             <h1 className="text-3xl font-bold tracking-tight">Minhas Solicitacoes</h1>
             <p className="text-muted-foreground mt-1">
-              Acompanhe suas solicitacoes de visita tecnica
+              Acompanhe suas solicitacoes de inspecao
             </p>
           </div>
         </div>
@@ -338,7 +338,7 @@ export default function MinhasSolicitacoesPage() {
             <ClipboardCheck className="w-12 h-12 text-muted-foreground mb-4" />
             <p className="text-muted-foreground">Nenhuma solicitacao encontrada</p>
             <p className="text-sm text-muted-foreground mt-1">
-              Solicite visitas tecnicas pela pagina de Rotas
+              Solicite inspecoes pela pagina de Rotas
             </p>
             <Button size="sm" className="mt-4" onClick={() => router.push('/comercial/rotas')}>
               Ir para Rotas
@@ -621,7 +621,7 @@ export default function MinhasSolicitacoesPage() {
             </CardHeader>
             <CardContent className="space-y-4">
               <p className="text-sm text-muted-foreground">
-                Voce esta cancelando a solicitacao de visita tecnica para <strong>{selectedVisita.cliente.nome}</strong> criada em <strong>{formatDate(selectedVisita.createdAt)}</strong>.
+                Voce esta cancelando a solicitacao de inspecao para <strong>{selectedVisita.cliente.nome}</strong> criada em <strong>{formatDate(selectedVisita.createdAt)}</strong>.
               </p>
 
               <div className="space-y-2">

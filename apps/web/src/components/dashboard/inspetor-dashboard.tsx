@@ -16,7 +16,7 @@ import {
 } from 'lucide-react'
 import { useAuth } from '@/contexts/auth-context'
 
-// Minhas O.S. - dados mockados (viriam da API filtrados pelo técnico logado)
+// Minhas O.S. - dados mockados (viriam da API filtrados pelo inspetor logado)
 const minhasOS = [
   {
     id: 'OS-1247',
@@ -56,7 +56,7 @@ const minhasOS = [
   },
 ]
 
-// Estatísticas do técnico
+// Estatísticas do inspetor
 const stats = [
   {
     title: 'Minhas O.S.',
@@ -144,7 +144,7 @@ const getPrioridadeBadge = (prioridade: string) => {
   }
 }
 
-export function TecnicoDashboard() {
+export function InspetorDashboard() {
   const { user } = useAuth()
 
   return (
@@ -154,7 +154,7 @@ export function TecnicoDashboard() {
         <div>
           <h1 className="text-3xl font-bold tracking-tight">Meu Painel</h1>
           <p className="text-muted-foreground mt-1">
-            Olá, {user?.name || 'Técnico'}! Aqui estão suas O.S. e tarefas
+            Olá, {user?.name || 'Inspetor'}! Aqui estão suas O.S. e tarefas
           </p>
         </div>
         <div className="flex items-center gap-2 text-sm text-muted-foreground">

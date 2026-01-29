@@ -24,7 +24,7 @@ import {
   AlertCircle,
 } from 'lucide-react'
 
-interface VisitaTecnica {
+interface VisitaInspecao {
   id: string
   clienteId: string
   vendedorId: string
@@ -58,7 +58,7 @@ interface AgendaDia {
   totalVisitas: number
   pendentes: number
   confirmadas: number
-  visitas: VisitaTecnica[]
+  visitas: VisitaInspecao[]
 }
 
 interface AgendaResponse {
@@ -96,7 +96,7 @@ const STATUS_CONFIG = {
   },
 }
 
-export default function AgendaTecnicoPage() {
+export default function AgendaInspetorPage() {
   const router = useRouter()
   const [agenda, setAgenda] = useState<AgendaDia[]>([])
   const [totais, setTotais] = useState({ dias: 0, visitas: 0, pendentes: 0, confirmadas: 0 })
@@ -112,7 +112,7 @@ export default function AgendaTecnicoPage() {
   })
   const [endDate, setEndDate] = useState<string>(() => {
     const date = new Date()
-    date.setDate(date.getDate() + 14) // Próximos 14 dias
+    date.setDate(date.getDate() + 14) // Proximos 14 dias
     return date.toISOString().split('T')[0] as string
   })
 
@@ -149,7 +149,7 @@ export default function AgendaTecnicoPage() {
 
       if (!res.ok) {
         const data = await res.json()
-        throw new Error(data.error || 'Erro ao confirmar visita')
+        throw new Error(data.error || 'Erro ao confirmar inspecao')
       }
 
       fetchAgenda()
@@ -169,7 +169,7 @@ export default function AgendaTecnicoPage() {
 
       if (!res.ok) {
         const data = await res.json()
-        throw new Error(data.error || 'Erro ao marcar visita como realizada')
+        throw new Error(data.error || 'Erro ao marcar inspecao como realizada')
       }
 
       fetchAgenda()
@@ -224,9 +224,9 @@ export default function AgendaTecnicoPage() {
             Voltar
           </Button>
           <div>
-            <h1 className="text-3xl font-bold tracking-tight">Agenda do Tecnico</h1>
+            <h1 className="text-3xl font-bold tracking-tight">Agenda do Inspetor</h1>
             <p className="text-muted-foreground mt-1">
-              Visitas tecnicas agendadas para inspecao
+              Inspecoes agendadas
             </p>
           </div>
         </div>
@@ -254,7 +254,7 @@ export default function AgendaTecnicoPage() {
           <CardContent className="p-4">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm text-muted-foreground">Dias com Visitas</p>
+                <p className="text-sm text-muted-foreground">Dias com Inspecoes</p>
                 <p className="text-2xl font-bold">{totais.dias}</p>
               </div>
               <Calendar className="w-8 h-8 text-muted-foreground" />
@@ -265,7 +265,7 @@ export default function AgendaTecnicoPage() {
           <CardContent className="p-4">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm text-muted-foreground">Total de Visitas</p>
+                <p className="text-sm text-muted-foreground">Total de Inspecoes</p>
                 <p className="text-2xl font-bold">{totais.visitas}</p>
               </div>
               <Wrench className="w-8 h-8 text-muted-foreground" />
@@ -322,9 +322,9 @@ export default function AgendaTecnicoPage() {
         <Card className="border-border/50">
           <CardContent className="py-12 flex flex-col items-center justify-center text-center">
             <Calendar className="w-12 h-12 text-muted-foreground mb-4" />
-            <p className="text-muted-foreground">Nenhuma visita agendada para este periodo</p>
+            <p className="text-muted-foreground">Nenhuma inspecao agendada para este periodo</p>
             <p className="text-sm text-muted-foreground mt-1">
-              As vendedoras podem solicitar visitas tecnicas pelo sistema
+              As vendedoras podem solicitar inspecoes pelo sistema
             </p>
           </CardContent>
         </Card>
@@ -351,7 +351,7 @@ export default function AgendaTecnicoPage() {
                     </div>
                   </div>
                   <div className="flex items-center gap-2">
-                    <Badge variant="outline">{dia.totalVisitas} visita{dia.totalVisitas !== 1 ? 's' : ''}</Badge>
+                    <Badge variant="outline">{dia.totalVisitas} inspecao{dia.totalVisitas !== 1 ? 'es' : ''}</Badge>
                     {dia.pendentes > 0 && (
                       <Badge className="bg-yellow-500/20 text-yellow-600 border-yellow-500/30">
                         {dia.pendentes} pendente{dia.pendentes !== 1 ? 's' : ''}

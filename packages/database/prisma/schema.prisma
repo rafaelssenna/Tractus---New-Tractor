@@ -196,6 +196,9 @@ model Cliente {
   estado        String?
   cep           String?
 
+  // Observações para vendedores (dicas sobre o cliente)
+  observacoes   String?
+
   // Relacionamentos
   vendedorId    String?
   vendedor      Vendedor? @relation(fields: [vendedorId], references: [id])

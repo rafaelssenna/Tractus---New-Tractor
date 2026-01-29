@@ -35,6 +35,7 @@ interface Cliente {
   id: string
   nome: string
   cidade: string | null
+  observacoes: string | null
 }
 
 interface RotaCliente {
@@ -116,15 +117,34 @@ export default function RotasPage() {
     diaSemana: '',
   })
 
-  // Solicitar Técnico modal
-  const [showSolicitarTecnicoModal, setShowSolicitarTecnicoModal] = useState(false)
-  const [solicitarTecnicoForm, setSolicitarTecnicoForm] = useState({
+  // Solicitar Inspetor modal
+  const [showSolicitarInspetorModal, setShowSolicitarInspetorModal] = useState(false)
+  const [solicitarInspetorForm, setSolicitarInspetorForm] = useState({
     clienteId: '',
     clienteNome: '',
     equipamentos: [] as string[],
     novoEquipamento: '',
     observacao: '',
   })
+
+  // Clientes visitados hoje (localStorage)
+  const [clientesVisitadosHoje, setClientesVisitadosHoje] = useState<string[]>([])
+
+  // Carregar clientes visitados do localStorage
+  useEffect(() => {
+    const hoje = new Date().toISOString().split('T')[0]
+    const storageKey = `visitados_${hoje}`
+    const saved = localStorage.getItem(storageKey)
+    if (saved) {
+      setClientesVisitadosHoje(JSON.parse(saved))
+    }
+    // Limpar dias anteriores
+    Object.keys(localStorage).forEach(key => {
+      if (key.startsWith('visitados_') && key !== storageKey) {
+        localStorage.removeItem(key)
+      }
+    })
+  }, [])
 
   // Helper para pegar o dia da semana atual
   const getDiaSemanaAtual = () => {
@@ -295,35 +315,51 @@ export default function RotasPage() {
     setShowAddClienteModal(true)
   }
 
-  const openSolicitarTecnicoModal = (cliente: Cliente) => {
-    setSolicitarTecnicoForm({
+  const openSolicitarInspetorModal = (cliente: Cliente) => {
+    setSolicitarInspetorForm({
       clienteId: cliente.id,
       clienteNome: cliente.nome,
       equipamentos: [],
       novoEquipamento: '',
       observacao: '',
     })
-    setShowSolicitarTecnicoModal(true)
+    setShowSolicitarInspetorModal(true)
+  }
+
+  const marcarComoVisitado = (clienteId: string) => {
+    const hoje = new Date().toISOString().split('T')[0]
+    const storageKey = `visitados_${hoje}`
+    const novosVisitados = [...clientesVisitadosHoje, clienteId]
+    setClientesVisitadosHoje(novosVisitados)
+    localStorage.setItem(storageKey, JSON.stringify(novosVisitados))
+  }
+
+  const desmarcarComoVisitado = (clienteId: string) => {
+    const hoje = new Date().toISOString().split('T')[0]
+    const storageKey = `visitados_${hoje}`
+    const novosVisitados = clientesVisitadosHoje.filter(id => id !== clienteId)
+    setClientesVisitadosHoje(novosVisitados)
+    localStorage.setItem(storageKey, JSON.stringify(novosVisitados))
   }
 
   const handleAddEquipamento = () => {
-    if (solicitarTecnicoForm.novoEquipamento.trim()) {
-      setSolicitarTecnicoForm({
-        ...solicitarTecnicoForm,
-        equipamentos: [...solicitarTecnicoForm.equipamentos, solicitarTecnicoForm.novoEquipamento.trim()],
+    if (solicitarInspetorForm.novoEquipamento.trim()) {
+      setSolicitarInspetorForm({
+        ...solicitarInspetorForm,
+        equipamentos: [...solicitarInspetorForm.equipamentos, solicitarInspetorForm.novoEquipamento.trim()],
         novoEquipamento: '',
       })
     }
   }
 
   const handleRemoveEquipamento = (index: number) => {
-    setSolicitarTecnicoForm({
-      ...solicitarTecnicoForm,
-      equipamentos: solicitarTecnicoForm.equipamentos.filter((_, i) => i !== index),
+    setSolicitarInspetorForm({
+      ...solicitarInspetorForm,
+      equipamentos: solicitarInspetorForm.equipamentos.filter((_, i) => i !== index),
     })
   }
 
-  const handleSolicitarTecnico = async () => {
+  const handleSolicitarInspetor = async () => {
     if (!selectedRota) return
 
     try {
@@ -332,20 +368,20 @@ export default function RotasPage() {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          clienteId: solicitarTecnicoForm.clienteId,
+          clienteId: solicitarInspetorForm.clienteId,
           vendedorId: selectedRota.vendedor.id,
-          equipamentos: solicitarTecnicoForm.equipamentos,
-          observacao: solicitarTecnicoForm.observacao || null,
+          equipamentos: solicitarInspetorForm.equipamentos,
+          observacao: solicitarInspetorForm.observacao || null,
         }),
       })
 
       if (!res.ok) {
         const data = await res.json()
-        throw new Error(data.error || 'Erro ao solicitar visita tecnica')
+        throw new Error(data.error || 'Erro ao solicitar inspecao')
       }
 
-      setShowSolicitarTecnicoModal(false)
-      setSolicitarTecnicoForm({
+      setShowSolicitarInspetorModal(false)
+      setSolicitarInspetorForm({
         clienteId: '',
         clienteNome: '',
         equipamentos: [],
@@ -353,7 +389,7 @@ export default function RotasPage() {
         observacao: '',
       })
       // Show success message
-      alert('Solicitacao enviada com sucesso! O tecnico definira a data.')
+      alert('Solicitacao enviada com sucesso! O inspetor definira a data.')
     } catch (err: any) {
       setError(err.message)
     } finally {
@@ -545,10 +581,10 @@ export default function RotasPage() {
                                         variant="ghost"
                                         size="sm"
                                         className="h-5 w-5 p-0"
-                                        title="Solicitar Tecnico"
+                                        title="Solicitar Inspetor"
                                         onClick={(e) => {
                                           e.stopPropagation()
-                                          openSolicitarTecnicoModal(rc.cliente)
+                                          openSolicitarInspetorModal(rc.cliente)
                                         }}
                                       >
                                         <Wrench className="w-3 h-3 text-primary" />
@@ -614,37 +650,81 @@ export default function RotasPage() {
                       </div>
                     ) : (
                       <div className="space-y-3">
-                        {clientesHoje.map((rc, index) => (
-                          <div
-                            key={rc.id}
-                            className="p-4 rounded-lg border border-border/50 bg-card hover:border-primary/30 transition-colors"
-                          >
-                            <div className="flex items-start justify-between">
-                              <div className="flex items-start gap-3">
-                                <div className="w-8 h-8 rounded-full bg-primary/20 flex items-center justify-center text-sm font-bold text-primary">
-                                  {index + 1}
-                                </div>
-                                <div>
-                                  <p className="font-medium text-base">{rc.cliente.nome}</p>
-                                  {rc.cliente.cidade && (
-                                    <p className="text-sm text-muted-foreground flex items-center gap-1 mt-0.5">
-                                      <MapPin className="w-3 h-3" />
-                                      {rc.cliente.cidade}
+                        {clientesHoje.map((rc, index) => {
+                          const jaVisitou = clientesVisitadosHoje.includes(rc.cliente.id)
+                          return (
+                            <div
+                              key={rc.id}
+                              className={`p-4 rounded-lg border transition-colors ${
+                                jaVisitou
+                                  ? 'border-success/50 bg-success/5'
+                                  : 'border-border/50 bg-card hover:border-primary/30'
+                              }`}
+                            >
+                              <div className="flex items-start justify-between">
+                                <div className="flex items-start gap-3">
+                                  <div className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-bold ${
+                                    jaVisitou
+                                      ? 'bg-success/20 text-success'
+                                      : 'bg-primary/20 text-primary'
+                                  }`}>
+                                    {jaVisitou ? <CheckCircle className="w-4 h-4" /> : index + 1}
+                                  </div>
+                                  <div className="flex-1">
+                                    <p className={`font-medium text-base ${jaVisitou ? 'line-through text-muted-foreground' : ''}`}>
+                                      {rc.cliente.nome}
                                     </p>
+                                    {rc.cliente.cidade && (
+                                      <p className="text-sm text-muted-foreground flex items-center gap-1 mt-0.5">
+                                        <MapPin className="w-3 h-3" />
+                                        {rc.cliente.cidade}
+                                      </p>
+                                    )}
+                                    {rc.cliente.observacoes && (
+                                      <div className="mt-2 p-2 rounded-md bg-muted/50 text-sm">
+                                        <p className="text-xs text-muted-foreground font-medium mb-1">Observacoes:</p>
+                                        <p className="text-foreground">{rc.cliente.observacoes}</p>
+                                      </div>
+                                    )}
+                                  </div>
+                                </div>
+                                <div className="flex flex-col gap-2">
+                                  {jaVisitou ? (
+                                    <Button
+                                      variant="ghost"
+                                      size="sm"
+                                      onClick={() => desmarcarComoVisitado(rc.cliente.id)}
+                                      className="text-muted-foreground"
+                                    >
+                                      <X className="w-4 h-4 mr-2" />
+                                      Desfazer
+                                    </Button>
+                                  ) : (
+                                    <>
+                                      <Button
+                                        variant="default"
+                                        size="sm"
+                                        onClick={() => marcarComoVisitado(rc.cliente.id)}
+                                        className="bg-success hover:bg-success/90"
+                                      >
+                                        <CheckCircle className="w-4 h-4 mr-2" />
+                                        Ja visitei
+                                      </Button>
+                                      <Button
+                                        variant="outline"
+                                        size="sm"
+                                        onClick={() => openSolicitarInspetorModal(rc.cliente)}
+                                      >
+                                        <Wrench className="w-4 h-4 mr-2" />
+                                        Solicitar Inspetor
+                                      </Button>
+                                    </>
                                   )}
                                 </div>
                               </div>
-                              <Button
-                                variant="outline"
-                                size="sm"
-                                onClick={() => openSolicitarTecnicoModal(rc.cliente)}
-                              >
-                                <Wrench className="w-4 h-4 mr-2" />
-                                Solicitar Tecnico
-                              </Button>
                             </div>
-                          </div>
-                        ))}
+                          )
+                        })}
                       </div>
                     )}
                   </CardContent>
@@ -813,12 +893,12 @@ export default function RotasPage() {
         </div>
       )}
 
-      {/* Solicitar Técnico Modal */}
-      {showSolicitarTecnicoModal && (
+      {/* Solicitar Inspetor Modal */}
+      {showSolicitarInspetorModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center">
           <div
             className="absolute inset-0 bg-black/50 backdrop-blur-sm"
-            onClick={() => setShowSolicitarTecnicoModal(false)}
+            onClick={() => setShowSolicitarInspetorModal(false)}
           />
           <Card className="relative z-10 w-full max-w-lg mx-4 shadow-xl max-h-[90vh] overflow-y-auto">
             <CardHeader className="pb-4">
@@ -826,17 +906,17 @@ export default function RotasPage() {
                 <div>
                   <CardTitle className="flex items-center gap-2">
                     <Wrench className="w-5 h-5" />
-                    Solicitar Visita Tecnica
+                    Solicitar Inspecao
                   </CardTitle>
                   <p className="text-sm text-muted-foreground mt-1">
-                    Cliente: {solicitarTecnicoForm.clienteNome}
+                    Cliente: {solicitarInspetorForm.clienteNome}
                   </p>
                 </div>
                 <Button
                   variant="ghost"
                   size="sm"
                   className="h-8 w-8 p-0"
-                  onClick={() => setShowSolicitarTecnicoModal(false)}
+                  onClick={() => setShowSolicitarInspetorModal(false)}
                 >
                   <X className="w-4 h-4" />
                 </Button>
@@ -844,7 +924,7 @@ export default function RotasPage() {
             </CardHeader>
             <CardContent className="space-y-4">
               <div className="p-3 bg-muted/50 rounded-lg text-sm text-muted-foreground">
-                <p>A data da visita sera definida pelo tecnico apos avaliar a solicitacao.</p>
+                <p>A data da visita sera definida pelo inspetor apos avaliar a solicitacao.</p>
               </div>
 
               <div className="space-y-2">
@@ -852,8 +932,8 @@ export default function RotasPage() {
                 <div className="flex gap-2">
                   <Input
                     placeholder="Ex: Trator John Deere 5075E"
-                    value={solicitarTecnicoForm.novoEquipamento}
-                    onChange={(e) => setSolicitarTecnicoForm({ ...solicitarTecnicoForm, novoEquipamento: e.target.value })}
+                    value={solicitarInspetorForm.novoEquipamento}
+                    onChange={(e) => setSolicitarInspetorForm({ ...solicitarInspetorForm, novoEquipamento: e.target.value })}
                     onKeyDown={(e) => {
                       if (e.key === 'Enter') {
                         e.preventDefault()
@@ -865,9 +945,9 @@ export default function RotasPage() {
                     <Plus className="w-4 h-4" />
                   </Button>
                 </div>
-                {solicitarTecnicoForm.equipamentos.length > 0 && (
+                {solicitarInspetorForm.equipamentos.length > 0 && (
                   <div className="flex flex-wrap gap-2 mt-2">
-                    {solicitarTecnicoForm.equipamentos.map((eq, index) => (
+                    {solicitarInspetorForm.equipamentos.map((eq, index) => (
                       <Badge key={index} variant="secondary" className="flex items-center gap-1">
                         {eq}
                         <button
@@ -886,9 +966,9 @@ export default function RotasPage() {
               <div className="space-y-2">
                 <Label>Observacao (opcional)</Label>
                 <Textarea
-                  placeholder="Informacoes adicionais para o tecnico..."
-                  value={solicitarTecnicoForm.observacao}
-                  onChange={(e: React.ChangeEvent<HTMLTextAreaElement>) => setSolicitarTecnicoForm({ ...solicitarTecnicoForm, observacao: e.target.value })}
+                  placeholder="Informacoes adicionais para o inspetor..."
+                  value={solicitarInspetorForm.observacao}
+                  onChange={(e: React.ChangeEvent<HTMLTextAreaElement>) => setSolicitarInspetorForm({ ...solicitarInspetorForm, observacao: e.target.value })}
                   rows={3}
                 />
               </div>
@@ -897,14 +977,14 @@ export default function RotasPage() {
                 <Button
                   variant="outline"
                   className="flex-1"
-                  onClick={() => setShowSolicitarTecnicoModal(false)}
+                  onClick={() => setShowSolicitarInspetorModal(false)}
                 >
                   Cancelar
                 </Button>
                 <Button
                   className="flex-1"
-                  onClick={handleSolicitarTecnico}
-                  disabled={saving || solicitarTecnicoForm.equipamentos.length === 0}
+                  onClick={handleSolicitarInspetor}
+                  disabled={saving || solicitarInspetorForm.equipamentos.length === 0}
                 >
                   {saving ? (
                     <>
@@ -914,7 +994,7 @@ export default function RotasPage() {
                   ) : (
                     <>
                       <Wrench className="w-4 h-4 mr-2" />
-                      Solicitar Tecnico
+                      Solicitar Inspetor
                     </>
                   )}
                 </Button>

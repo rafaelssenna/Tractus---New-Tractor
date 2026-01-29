@@ -41,6 +41,7 @@ export async function rotasRoutes(app: FastifyInstance) {
                 id: true,
                 nome: true,
                 cidade: true,
+                observacoes: true,
               }
             }
           },
@@ -418,6 +419,7 @@ export async function rotasRoutes(app: FastifyInstance) {
                 id: true,
                 nome: true,
                 cidade: true,
+                observacoes: true,
               }
             }
           },

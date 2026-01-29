@@ -52,7 +52,7 @@ const allMenuItems: MenuItem[] = [
       { title: 'Clientes', href: '/comercial/clientes', icon: Users },
       { title: 'Vendedores', href: '/comercial/vendedores', icon: UserCheck },
       { title: 'Rotas', href: '/comercial/rotas', icon: Route },
-      { title: 'Agenda do Técnico', href: '/comercial/agenda-tecnico', icon: Calendar },
+      { title: 'Agenda do Inspetor', href: '/comercial/agenda-inspetor', icon: Calendar },
     ],
   },
   {
@@ -93,12 +93,12 @@ export function Sidebar() {
     if (item.submenu) {
       let filteredSubmenu = item.submenu.filter(sub => canAccessRoute(user?.role, sub.href))
 
-      // Para vendedoras, esconder "Visão Geral", "Vendedores" e "Agenda do Técnico"
+      // Para vendedoras, esconder "Visão Geral", "Vendedores" e "Agenda do Inspetor"
       if (isVendedora) {
         filteredSubmenu = filteredSubmenu.filter(sub =>
           sub.href !== '/comercial' &&
           sub.href !== '/comercial/vendedores' &&
-          sub.href !== '/comercial/agenda-tecnico'
+          sub.href !== '/comercial/agenda-inspetor'
         )
         // Adicionar "Minhas Solicitações" no início para vendedoras
         filteredSubmenu = [

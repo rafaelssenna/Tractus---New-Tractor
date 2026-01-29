@@ -1,7 +1,7 @@
 'use client'
 
 import { useAuth } from '@/contexts/auth-context'
-import { AdminDashboard, TecnicoDashboard, ComercialDashboard } from '@/components/dashboard'
+import { AdminDashboard, InspetorDashboard, ComercialDashboard } from '@/components/dashboard'
 import { Loader2 } from 'lucide-react'
 
 export default function DashboardPage() {
@@ -27,16 +27,16 @@ export default function DashboardPage() {
     case 'TECNICO':
     case 'PRODUCAO':
     case 'QUALIDADE':
-      return <TecnicoDashboard />
+      return <InspetorDashboard />
 
     case 'PCP':
-      // PCP pode ver o dashboard de produção/técnico por enquanto
-      return <TecnicoDashboard />
+      // PCP pode ver o dashboard de produção/inspetor por enquanto
+      return <InspetorDashboard />
 
     case 'SUPRIMENTOS':
     case 'ALMOXARIFADO':
-      // Suprimentos e almoxarifado podem ver dashboard técnico por enquanto
-      return <TecnicoDashboard />
+      // Suprimentos e almoxarifado podem ver dashboard inspetor por enquanto
+      return <InspetorDashboard />
 
     case 'ORCAMENTO':
       // Orçamento vê o dashboard comercial pois lida com propostas
@@ -48,7 +48,7 @@ export default function DashboardPage() {
       return <AdminDashboard />
 
     default:
-      // Fallback para dashboard técnico (mais restrito)
-      return <TecnicoDashboard />
+      // Fallback para dashboard inspetor (mais restrito)
+      return <InspetorDashboard />
   }
 }

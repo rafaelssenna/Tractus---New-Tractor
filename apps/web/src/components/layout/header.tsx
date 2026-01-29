@@ -49,7 +49,7 @@ export function Header() {
     ADMIN: 'Administrador',
     DIRETOR: 'Diretor',
     COMERCIAL: 'Comercial',
-    TECNICO: 'Técnico',
+    TECNICO: 'Inspetor',
     ORCAMENTO: 'Orçamento',
     FINANCEIRO: 'Financeiro',
     PCP: 'PCP',
