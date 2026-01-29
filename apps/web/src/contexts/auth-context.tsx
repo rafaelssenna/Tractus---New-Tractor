@@ -35,11 +35,14 @@ const rolePermissions: Record<string, string[]> = {
     '/comercial/propostas',
     '/comercial/visitas',
     '/comercial/rotas',
+    '/comercial/despesas',
+    '/comercial/minhas-solicitacoes',
   ],
   TECNICO: [
     '/dashboard',
     '/producao',
     '/qualidade',
+    '/comercial/agenda-inspetor',
   ],
   PCP: [
     '/dashboard',

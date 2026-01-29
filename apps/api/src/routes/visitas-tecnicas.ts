@@ -72,6 +72,72 @@ export async function visitasTecnicasRoutes(app: FastifyInstance) {
     return visitasTecnicas
   })
 
+  // Solicitações pendentes (sem data definida) - ordenadas por ordem de chegada
+  app.get('/solicitacoes', async (request) => {
+    const visitasTecnicas = await db.visitaTecnica.findMany({
+      where: {
+        dataVisita: null,
+        status: { in: ['PENDENTE', 'CONFIRMADA'] },
+      },
+      include: {
+        cliente: {
+          select: {
+            id: true,
+            nome: true,
+            cidade: true,
+            endereco: true,
+            telefone: true,
+            estado: true,
+          }
+        },
+        vendedor: {
+          include: {
+            user: { select: { id: true, name: true, photo: true } }
+          }
+        },
+      },
+      orderBy: { createdAt: 'asc' }, // Ordem de chegada
+    })
+
+    return {
+      solicitacoes: visitasTecnicas,
+      total: visitasTecnicas.length,
+    }
+  })
+
+  // Agendar visita técnica (admin define a data)
+  app.post('/:id/agendar', async (request, reply) => {
+    const { id } = request.params as { id: string }
+    const { dataVisita } = request.body as { dataVisita: string }
+
+    if (!dataVisita) {
+      return reply.status(400).send({ error: 'Data da visita é obrigatória' })
+    }
+
+    const visitaExistente = await db.visitaTecnica.findUnique({ where: { id } })
+    if (!visitaExistente) {
+      return reply.status(404).send({ error: 'Visita técnica não encontrada' })
+    }
+
+    if (visitaExistente.status === 'REALIZADA' || visitaExistente.status === 'CANCELADA') {
+      return reply.status(400).send({ error: 'Não é possível agendar uma visita já realizada ou cancelada' })
+    }
+
+    const visitaTecnica = await db.visitaTecnica.update({
+      where: { id },
+      data: {
+        dataVisita: new Date(dataVisita),
+        status: 'CONFIRMADA', // Quando admin agenda, já confirma
+      },
+      include: {
+        cliente: { select: { id: true, nome: true } },
+        vendedor: { include: { user: { select: { name: true } } } },
+      },
+    })
+
+    return visitaTecnica
+  })
+
   // Agenda do técnico (visitas por data)
   app.get('/agenda', async (request) => {
     const { data, dataInicio, dataFim } = request.query as {
@@ -101,6 +167,7 @@ export async function visitasTecnicasRoutes(app: FastifyInstance) {
     const visitasTecnicas = await db.visitaTecnica.findMany({
       where: {
         ...dataFilter,
+        dataVisita: { not: null }, // Somente visitas com data definida
         status: { in: ['PENDENTE', 'CONFIRMADA'] },
       },
       include: {
@@ -125,7 +192,7 @@ export async function visitasTecnicasRoutes(app: FastifyInstance) {
 
     // Agrupar por data
     const agenda = visitasTecnicas.reduce((acc, vt) => {
-      const dataKey = vt.dataVisita.toISOString().split('T')[0] as string
+      const dataKey = vt.dataVisita!.toISOString().split('T')[0] as string
       if (!acc[dataKey]) {
         acc[dataKey] = []
       }
