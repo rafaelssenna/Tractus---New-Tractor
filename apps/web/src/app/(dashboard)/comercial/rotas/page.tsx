@@ -465,6 +465,27 @@ export default function RotasPage() {
 
     try {
       setSaving(true)
+
+      // Corrigir observação com IA antes de salvar
+      let observacaoFinal = solicitarInspetorForm.observacao
+      if (observacaoFinal && observacaoFinal.trim()) {
+        try {
+          const aiRes = await fetch(`${API_URL}/ai/corrigir-texto`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ texto: observacaoFinal }),
+          })
+          if (aiRes.ok) {
+            const aiData = await aiRes.json()
+            if (aiData.corrigido && aiData.textoCorrigido) {
+              observacaoFinal = aiData.textoCorrigido
+            }
+          }
+        } catch {
+          // Se falhar a correção, usa o texto original
+        }
+      }
+
       const res = await fetch(`${API_URL}/visitas-tecnicas`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -472,7 +493,7 @@ export default function RotasPage() {
           clienteId: solicitarInspetorForm.clienteId,
           vendedorId: selectedRota.vendedor.id,
           equipamentos: solicitarInspetorForm.equipamentos,
-          observacao: solicitarInspetorForm.observacao || undefined,
+          observacao: observacaoFinal || undefined,
           dataVisita: new Date().toISOString(), // Data provisória, inspetor define depois
         }),
       })

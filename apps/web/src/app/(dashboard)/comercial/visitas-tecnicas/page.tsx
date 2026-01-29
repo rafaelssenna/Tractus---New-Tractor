@@ -217,11 +217,32 @@ export default function VisitasTecnicasPage() {
       setSaving(true)
       setError('')
 
+      // Corrigir observação com IA antes de salvar
+      let observacaoFinal = formData.observacao
+      if (observacaoFinal && observacaoFinal.trim()) {
+        try {
+          const aiRes = await fetch(`${API_URL}/ai/corrigir-texto`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ texto: observacaoFinal }),
+          })
+          if (aiRes.ok) {
+            const aiData = await aiRes.json()
+            if (aiData.corrigido && aiData.textoCorrigido) {
+              observacaoFinal = aiData.textoCorrigido
+            }
+          }
+        } catch {
+          // Se falhar a correção, usa o texto original
+        }
+      }
+
       const res = await fetch(`${API_URL}/visitas-tecnicas`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           ...formData,
+          observacao: observacaoFinal,
           equipamentos: equipamentosFiltrados,
         }),
       })
