@@ -6,6 +6,11 @@ const createVendedorSchema = z.object({
   userId: z.string(),
 })
 
+const pixSchema = z.object({
+  chavePix: z.string().min(1, 'Chave PIX é obrigatória'),
+  tipoChavePix: z.enum(['CPF', 'CNPJ', 'EMAIL', 'TELEFONE', 'ALEATORIA']),
+})
+
 export async function vendedoresRoutes(app: FastifyInstance) {
   // Listar todos os vendedores
   app.get('/', async () => {
@@ -88,6 +93,36 @@ export async function vendedoresRoutes(app: FastifyInstance) {
     await db.vendedor.delete({ where: { id } })
 
     return reply.status(204).send()
+  })
+
+  // Buscar dados PIX do vendedor
+  app.get('/:id/pix', async (request, reply) => {
+    const { id } = request.params as { id: string }
+
+    const vendedor = await db.vendedor.findUnique({
+      where: { id },
+      select: { chavePix: true, tipoChavePix: true },
+    })
+
+    if (!vendedor) {
+      return reply.status(404).send({ error: 'Vendedor não encontrado' })
+    }
+
+    return vendedor
+  })
+
+  // Atualizar dados PIX do vendedor
+  app.put('/:id/pix', async (request, reply) => {
+    const { id } = request.params as { id: string }
+    const { chavePix, tipoChavePix } = pixSchema.parse(request.body)
+
+    const vendedor = await db.vendedor.update({
+      where: { id },
+      data: { chavePix, tipoChavePix },
+      select: { chavePix: true, tipoChavePix: true },
+    })
+
+    return vendedor
   })
 
   // Dashboard do vendedor (metas e indicadores)

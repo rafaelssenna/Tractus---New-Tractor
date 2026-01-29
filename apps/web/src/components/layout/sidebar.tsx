@@ -26,6 +26,7 @@ import {
   Wrench,
   Calendar,
   ClipboardCheck,
+  Receipt,
 } from 'lucide-react'
 import { useState } from 'react'
 import { useAuth, canAccessRoute } from '@/contexts/auth-context'
@@ -52,6 +53,7 @@ const allMenuItems: MenuItem[] = [
       { title: 'Clientes', href: '/comercial/clientes', icon: Users },
       { title: 'Vendedores', href: '/comercial/vendedores', icon: UserCheck },
       { title: 'Rotas', href: '/comercial/rotas', icon: Route },
+      { title: 'Despesas', href: '/comercial/despesas', icon: Receipt },
       { title: 'Agenda do Inspetor', href: '/comercial/agenda-inspetor', icon: Calendar },
     ],
   },

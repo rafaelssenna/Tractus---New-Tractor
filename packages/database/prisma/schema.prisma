@@ -59,14 +59,6 @@ enum StatusLiberacaoCusto {
   AGUARDANDO_AJUSTE
 }
 
-enum TipoDespesa {
-  COMBUSTIVEL
-  TROCA_OLEO
-  REVISAO
-  PNEU_NIVEL
-  PNEU_TROCA
-  OUTROS
-}
 
 enum CondicaoSolo {
   BAIXO_IMPACTO
@@ -140,6 +132,10 @@ model Vendedor {
   id            String    @id @default(cuid())
   userId        String    @unique
   user          User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  // Dados para reembolso de despesas (PIX)
+  chavePix      String?
+  tipoChavePix  String?   // CPF, CNPJ, EMAIL, TELEFONE, ALEATORIA
 
   // Cartela de clientes
   clientes      Cliente[]
@@ -573,13 +569,17 @@ model Despesa {
 
   // Dados da despesa
   data          DateTime    @db.Date
-  tipo          TipoDespesa
+  tipo          String      // Tipo de despesa (texto livre)
   descricao     String?
   valor         Decimal     @db.Decimal(10, 2)
-  kmVeiculo     Int?
 
-  // Comprovante
-  comprovante   String?     // URL do arquivo
+  // Comprovante (foto do cupom/nota fiscal)
+  comprovante   String?     // URL da imagem no IMGBB
+
+  // Validação da IA
+  validadoPorIA Boolean     @default(false)
+  valorExtraido Decimal?    @db.Decimal(10, 2)  // Valor extraído pela IA
+  nomeExtraido  String?     // Nome do estabelecimento extraído pela IA
 
   createdAt     DateTime    @default(now())
   updatedAt     DateTime    @updatedAt
