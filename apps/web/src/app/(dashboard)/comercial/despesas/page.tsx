@@ -74,6 +74,10 @@ export default function DespesasPage() {
     mensagem: string
     valorExtraido: number | null
     nomeExtraido: string | null
+    tipoExtraido: string | null
+    dataExtraida: string | null
+    horarioExtraido: string | null
+    cnpjExtraido: string | null
     valorConfere: boolean
   } | null>(null)
 
@@ -167,10 +171,9 @@ export default function DespesasPage() {
         const data = await res.json()
         setFormData(prev => ({ ...prev, comprovante: data.url }))
 
-        // Analisar comprovante com IA se valor foi informado
-        if (formData.valor) {
-          await analisarComprovante(data.url, parseFloat(formData.valor))
-        }
+        // Analisar comprovante com IA (sempre, para extrair informações)
+        const valorAtual = formData.valor ? parseFloat(formData.valor) : 0
+        await analisarComprovante(data.url, valorAtual)
       } catch (err: any) {
         setError(err.message)
       } finally {
@@ -195,6 +198,16 @@ export default function DespesasPage() {
 
       const data = await res.json()
       setAnaliseResultado(data)
+
+      // Preencher tipo automaticamente se a IA extraiu e o campo está vazio
+      if (data.tipoExtraido && !formData.tipo) {
+        setFormData(prev => ({ ...prev, tipo: data.tipoExtraido }))
+      }
+
+      // Preencher valor automaticamente se a IA extraiu e o campo está vazio
+      if (data.valorExtraido && !formData.valor) {
+        setFormData(prev => ({ ...prev, valor: data.valorExtraido.toString() }))
+      }
     } catch (err: any) {
       console.error('Erro ao analisar comprovante:', err)
     } finally {
@@ -613,16 +626,26 @@ export default function DespesasPage() {
                     )}
                     <div className="flex-1">
                       <p className="text-sm font-medium">{analiseResultado.mensagem}</p>
-                      {analiseResultado.nomeExtraido && (
-                        <p className="text-xs text-muted-foreground mt-1">
-                          Estabelecimento: {analiseResultado.nomeExtraido}
-                        </p>
-                      )}
-                      {analiseResultado.valorExtraido && (
-                        <p className="text-xs text-muted-foreground">
-                          Valor extraido: {formatCurrency(analiseResultado.valorExtraido)}
-                        </p>
-                      )}
+                      <div className="mt-2 space-y-1 text-xs text-muted-foreground">
+                        {analiseResultado.nomeExtraido && (
+                          <p><span className="font-medium">Estabelecimento:</span> {analiseResultado.nomeExtraido}</p>
+                        )}
+                        {analiseResultado.tipoExtraido && (
+                          <p><span className="font-medium">Tipo:</span> {analiseResultado.tipoExtraido}</p>
+                        )}
+                        {analiseResultado.valorExtraido !== null && (
+                          <p><span className="font-medium">Valor:</span> {formatCurrency(analiseResultado.valorExtraido)}</p>
+                        )}
+                        {analiseResultado.dataExtraida && (
+                          <p><span className="font-medium">Data:</span> {analiseResultado.dataExtraida}</p>
+                        )}
+                        {analiseResultado.horarioExtraido && (
+                          <p><span className="font-medium">Horário:</span> {analiseResultado.horarioExtraido}</p>
+                        )}
+                        {analiseResultado.cnpjExtraido && (
+                          <p><span className="font-medium">CNPJ:</span> {analiseResultado.cnpjExtraido}</p>
+                        )}
+                      </div>
                     </div>
                   </div>
                 </div>

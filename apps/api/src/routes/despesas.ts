@@ -78,6 +78,10 @@ export async function despesasRoutes(app: FastifyInstance) {
         mensagem: 'Validação por IA não disponível',
         valorExtraido: null,
         nomeExtraido: null,
+        tipoExtraido: null,
+        dataExtraida: null,
+        horarioExtraido: null,
+        cnpjExtraido: null,
         valorConfere: true,
       }
     }
@@ -109,11 +113,16 @@ RESPONDA EXATAMENTE no formato JSON abaixo, sem texto adicional:
   "ehCupomValido": true ou false,
   "valor": número decimal do valor total (ex: 150.50) ou null se não encontrar,
   "nomeEstabelecimento": "nome do estabelecimento" ou null se não encontrar,
+  "tipoEstabelecimento": "tipo baseado no estabelecimento" ou null (ex: "Alimentação", "Combustível", "Hospedagem", "Pedágio", "Estacionamento", "Material", "Outros"),
+  "data": "data no formato DD/MM/AAAA" ou null se não encontrar,
+  "horario": "horário no formato HH:MM" ou null se não encontrar,
+  "cnpj": "CNPJ do estabelecimento" ou null se não encontrar,
   "motivo": "breve explicação se não for válido"
 }
 
 Se NÃO for um cupom/nota fiscal válido, retorne ehCupomValido: false.
-Se for um cupom válido, extraia o valor TOTAL e o nome do estabelecimento.`,
+Se for um cupom válido, extraia TODAS as informações possíveis.
+Para tipoEstabelecimento, analise o nome e os itens para determinar: posto de combustível = "Combustível", restaurante/lanchonete/padaria = "Alimentação", hotel/pousada = "Hospedagem", etc.`,
                   },
                   {
                     inlineData: {
@@ -141,6 +150,10 @@ Se for um cupom válido, extraia o valor TOTAL e o nome do estabelecimento.`,
           mensagem: 'Erro na validação por IA',
           valorExtraido: null,
           nomeExtraido: null,
+          tipoExtraido: null,
+          dataExtraida: null,
+          horarioExtraido: null,
+          cnpjExtraido: null,
           valorConfere: true,
         }
       }
@@ -154,6 +167,10 @@ Se for um cupom válido, extraia o valor TOTAL e o nome do estabelecimento.`,
           mensagem: 'Não foi possível analisar a imagem',
           valorExtraido: null,
           nomeExtraido: null,
+          tipoExtraido: null,
+          dataExtraida: null,
+          horarioExtraido: null,
+          cnpjExtraido: null,
           valorConfere: true,
         }
       }
@@ -171,6 +188,10 @@ Se for um cupom válido, extraia o valor TOTAL e o nome do estabelecimento.`,
           mensagem: 'Erro ao processar resposta da IA',
           valorExtraido: null,
           nomeExtraido: null,
+          tipoExtraido: null,
+          dataExtraida: null,
+          horarioExtraido: null,
+          cnpjExtraido: null,
           valorConfere: true,
         }
       }
@@ -186,6 +207,10 @@ Se for um cupom válido, extraia o valor TOTAL e o nome do estabelecimento.`,
           mensagem: parsed.motivo || 'A imagem não parece ser um cupom ou nota fiscal válido',
           valorExtraido: null,
           nomeExtraido: null,
+          tipoExtraido: null,
+          dataExtraida: null,
+          horarioExtraido: null,
+          cnpjExtraido: null,
           valorConfere: false,
         }
       }
@@ -209,6 +234,10 @@ Se for um cupom válido, extraia o valor TOTAL e o nome do estabelecimento.`,
         mensagem,
         valorExtraido,
         nomeExtraido: parsed.nomeEstabelecimento,
+        tipoExtraido: parsed.tipoEstabelecimento,
+        dataExtraida: parsed.data,
+        horarioExtraido: parsed.horario,
+        cnpjExtraido: parsed.cnpj,
         valorConfere,
       }
     } catch (error) {
@@ -218,6 +247,10 @@ Se for um cupom válido, extraia o valor TOTAL e o nome do estabelecimento.`,
         mensagem: 'Erro na análise do comprovante',
         valorExtraido: null,
         nomeExtraido: null,
+        tipoExtraido: null,
+        dataExtraida: null,
+        horarioExtraido: null,
+        cnpjExtraido: null,
         valorConfere: true,
       }
     }
