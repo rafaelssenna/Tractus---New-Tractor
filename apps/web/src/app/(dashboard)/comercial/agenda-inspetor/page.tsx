@@ -209,7 +209,7 @@ export default function AgendaInspetorPage() {
       const joviano = data.find(i => i.name.toLowerCase().includes('joviano'))
       if (joviano) {
         setSelectedInspetorId(joviano.id)
-      } else if (data.length > 0) {
+      } else if (data.length > 0 && data[0]) {
         setSelectedInspetorId(data[0].id)
       }
     } catch (err: any) {
