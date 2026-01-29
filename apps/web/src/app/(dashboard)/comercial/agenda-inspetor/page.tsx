@@ -522,14 +522,14 @@ export default function AgendaInspetorPage() {
             </div>
           </CardContent>
         </Card>
-        <Card className="border-border/50">
+        <Card className="border-purple-500/20 bg-purple-500/5">
           <CardContent className="p-4">
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-sm text-muted-foreground">Dias com Inspeções</p>
-                <p className="text-2xl font-bold">{totais.dias}</p>
+                <p className="text-2xl font-bold text-purple-600">{totais.dias}</p>
               </div>
-              <Wrench className="w-8 h-8 text-muted-foreground" />
+              <Wrench className="w-8 h-8 text-purple-600" />
             </div>
           </CardContent>
         </Card>
@@ -588,7 +588,7 @@ export default function AgendaInspetorPage() {
                 <FileText className="w-12 h-12 text-muted-foreground mb-4" />
                 <p className="text-muted-foreground">Nenhuma solicitação pendente</p>
                 <p className="text-sm text-muted-foreground mt-1">
-                  Quando as vendedoras solicitarem inspeções, elas aparecerão aqui
+                  Quando os representantes comerciais solicitarem inspeções, elas aparecerão aqui
                 </p>
               </CardContent>
             </Card>
