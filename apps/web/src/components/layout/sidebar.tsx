@@ -93,10 +93,12 @@ export function Sidebar() {
     if (item.submenu) {
       let filteredSubmenu = item.submenu.filter(sub => canAccessRoute(user?.role, sub.href))
 
-      // Para vendedoras, esconder "Visão Geral" e "Vendedores"
+      // Para vendedoras, esconder "Visão Geral", "Vendedores" e "Agenda do Técnico"
       if (isVendedora) {
         filteredSubmenu = filteredSubmenu.filter(sub =>
-          sub.href !== '/comercial' && sub.href !== '/comercial/vendedores'
+          sub.href !== '/comercial' &&
+          sub.href !== '/comercial/vendedores' &&
+          sub.href !== '/comercial/agenda-tecnico'
         )
         // Adicionar "Minhas Solicitações" no início para vendedoras
         filteredSubmenu = [
