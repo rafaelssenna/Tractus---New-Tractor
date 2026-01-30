@@ -287,7 +287,7 @@ export default function LaudosInspetorPage() {
               if (!medicoesPorTipo[med.tipo]) {
                 medicoesPorTipo[med.tipo] = []
               }
-              medicoesPorTipo[med.tipo].push(med)
+              medicoesPorTipo[med.tipo]!.push(med)
             }
 
             // Gerar seções HTML para cada tipo
