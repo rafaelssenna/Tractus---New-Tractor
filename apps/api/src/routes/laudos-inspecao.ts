@@ -577,6 +577,83 @@ export async function laudosInspecaoRoutes(app: FastifyInstance) {
     }
   })
 
+  // Gerar sumário técnico com IA baseado nas medições
+  app.post('/gerar-sumario', async (request) => {
+    const { equipamento, medicoes, sumarioAtual } = request.body as {
+      equipamento: string
+      medicoes: Array<{
+        tipo: string
+        desgasteLE: number | null
+        desgasteLD: number | null
+        statusLE: string | null
+        statusLD: string | null
+      }>
+      sumarioAtual?: string
+    }
+
+    if (!process.env.GEMINI_API_KEY) {
+      return { sumario: sumarioAtual || '', erro: 'IA não configurada' }
+    }
+
+    try {
+      const model = genAI.getGenerativeModel({ model: 'gemini-2.5-flash' })
+
+      // Preparar dados das medições para o prompt
+      const medicoesTexto = medicoes
+        .filter(m => m.desgasteLE !== null || m.desgasteLD !== null)
+        .map(m => {
+          const tipoLabel = TIPO_LABELS[m.tipo] || m.tipo
+          const statusLELabel = m.statusLE ? STATUS_LABELS[m.statusLE] : 'N/A'
+          const statusLDLabel = m.statusLD ? STATUS_LABELS[m.statusLD] : 'N/A'
+          return `- ${tipoLabel}: LE ${m.desgasteLE?.toFixed(1) || 'N/A'}% (${statusLELabel}), LD ${m.desgasteLD?.toFixed(1) || 'N/A'}% (${statusLDLabel})`
+        })
+        .join('\n')
+
+      // Identificar componentes críticos
+      const componentesCriticos = medicoes
+        .filter(m => m.statusLE === 'FORA_PARAMETROS' || m.statusLD === 'FORA_PARAMETROS')
+        .map(m => TIPO_LABELS[m.tipo] || m.tipo)
+
+      const componentesVerificar = medicoes
+        .filter(m => (m.statusLE === 'VERIFICAR' || m.statusLD === 'VERIFICAR') && m.statusLE !== 'FORA_PARAMETROS' && m.statusLD !== 'FORA_PARAMETROS')
+        .map(m => TIPO_LABELS[m.tipo] || m.tipo)
+
+      const prompt = `Você é um engenheiro mecânico especialista em manutenção de material rodante de equipamentos pesados (escavadeiras, tratores de esteira, etc).
+
+Dados da inspeção do equipamento "${equipamento}":
+${medicoesTexto}
+
+${componentesCriticos.length > 0 ? `Componentes FORA DOS PARÂMETROS (críticos): ${componentesCriticos.join(', ')}` : 'Nenhum componente fora dos parâmetros.'}
+${componentesVerificar.length > 0 ? `Componentes para VERIFICAR: ${componentesVerificar.join(', ')}` : ''}
+
+${sumarioAtual ? `Sumário atual (para revisar/melhorar): "${sumarioAtual}"` : ''}
+
+Gere um sumário técnico CONCISO (máximo 3-4 frases) em português brasileiro contendo:
+1. Estado geral do material rodante
+2. Componentes que requerem atenção imediata (se houver)
+3. Recomendação de manutenção
+
+Use linguagem técnica profissional. Seja direto e objetivo.
+Retorne APENAS o texto do sumário, sem títulos ou explicações.`
+
+      const result = await model.generateContent(prompt)
+      const response = await result.response
+      const sumarioGerado = response.text().trim()
+
+      return {
+        sumario: sumarioGerado,
+        gerado: true,
+      }
+    } catch (error) {
+      console.error('[IA] Erro ao gerar sumário:', error)
+      return {
+        sumario: sumarioAtual || '',
+        erro: 'Erro ao gerar sumário com IA',
+        gerado: false,
+      }
+    }
+  })
+
   // Gerar dados para PDF
   app.get('/:id/pdf-data', async (request, reply) => {
     const { id } = request.params as { id: string }

@@ -27,6 +27,7 @@ import {
   AlertCircle,
   Check,
   Trash2,
+  Sparkles,
 } from 'lucide-react'
 
 // Tipos de componentes rodantes
@@ -214,6 +215,7 @@ function EditarLaudoContent() {
   const [fotoLadoSelecionado, setFotoLadoSelecionado] = useState<'LE' | 'LD' | 'AMBOS'>('AMBOS')
 
   const [laudoId, setLaudoId] = useState<string | null>(null)
+  const [gerandoSumario, setGerandoSumario] = useState(false)
 
   const fotoInputRef = useRef<HTMLInputElement>(null)
 
@@ -404,6 +406,50 @@ function EditarLaudoContent() {
     const updated = [...fotos]
     updated[index] = { ...updated[index]!, legenda }
     setFotos(updated)
+  }
+
+  const gerarSumarioIA = async () => {
+    // Verificar se há medições
+    const medicoesPreenchidas = medicoes.filter(m => m.medicaoLE !== null || m.medicaoLD !== null)
+    if (medicoesPreenchidas.length === 0) {
+      setError('Preencha as medições antes de gerar o sumário')
+      return
+    }
+
+    setGerandoSumario(true)
+    setError('')
+    try {
+      const res = await fetch(`${API_URL}/laudos-inspecao/gerar-sumario`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          equipamento: laudoForm.equipamento,
+          medicoes: medicoes.map(m => ({
+            tipo: m.tipo,
+            desgasteLE: m.desgasteLE,
+            desgasteLD: m.desgasteLD,
+            statusLE: m.statusLE,
+            statusLD: m.statusLD,
+          })),
+          sumarioAtual: laudoForm.sumario || undefined,
+        }),
+      })
+
+      if (!res.ok) {
+        throw new Error('Erro ao gerar sumário')
+      }
+
+      const data = await res.json()
+      if (data.erro) {
+        throw new Error(data.erro)
+      }
+
+      setLaudoForm({ ...laudoForm, sumario: data.sumario })
+    } catch (err: any) {
+      setError(err.message)
+    } finally {
+      setGerandoSumario(false)
+    }
   }
 
   const salvarLaudo = async () => {
@@ -925,11 +971,29 @@ function EditarLaudoContent() {
       {/* Sumário / Observações */}
       <Card className="border-border/50">
         <CardHeader>
-          <CardTitle>Sumário Técnico / Observações</CardTitle>
+          <div className="flex items-center justify-between">
+            <CardTitle>Sumário Técnico / Observações</CardTitle>
+            {!isEnviado && (
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={gerarSumarioIA}
+                disabled={gerandoSumario || medicoes.filter(m => m.medicaoLE !== null || m.medicaoLD !== null).length === 0}
+                className="gap-2"
+              >
+                {gerandoSumario ? (
+                  <Loader2 className="w-4 h-4 animate-spin" />
+                ) : (
+                  <Sparkles className="w-4 h-4" />
+                )}
+                {gerandoSumario ? 'Gerando...' : 'Gerar com IA'}
+              </Button>
+            )}
+          </div>
         </CardHeader>
         <CardContent>
           <Textarea
-            placeholder="Escreva um resumo técnico da inspeção, recomendações de manutenção, etc..."
+            placeholder="Escreva um resumo técnico da inspeção, recomendações de manutenção, etc... Ou clique em 'Gerar com IA' para criar automaticamente baseado nas medições."
             value={laudoForm.sumario}
             onChange={(e) => setLaudoForm({ ...laudoForm, sumario: e.target.value })}
             rows={4}
