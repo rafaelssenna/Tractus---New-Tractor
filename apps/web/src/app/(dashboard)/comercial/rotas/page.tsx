@@ -40,6 +40,18 @@ interface Cliente {
   observacoes: string | null
 }
 
+interface Anotacao {
+  id: string
+  texto: string
+  createdAt: string
+  vendedor: {
+    user: {
+      name: string
+      photo: string | null
+    }
+  }
+}
+
 interface RotaCliente {
   id: string
   cliente: Cliente
@@ -138,14 +150,18 @@ export default function RotasPage() {
     observacao: '',
   })
 
-  // Editar Observacoes modal
-  const [showEditObsModal, setShowEditObsModal] = useState(false)
-  const [editObsForm, setEditObsForm] = useState({
+  // Anotacoes modal (novo sistema por vendedor)
+  const [showAnotacoesModal, setShowAnotacoesModal] = useState(false)
+  const [anotacoesModalData, setAnotacoesModalData] = useState({
     clienteId: '',
     clienteNome: '',
-    observacoes: '',
   })
-  const [savingObs, setSavingObs] = useState(false)
+  const [anotacoes, setAnotacoes] = useState<Anotacao[]>([])
+  const [novaAnotacao, setNovaAnotacao] = useState('')
+  const [loadingAnotacoes, setLoadingAnotacoes] = useState(false)
+  const [savingAnotacao, setSavingAnotacao] = useState(false)
+  const [resumoIA, setResumoIA] = useState<string | null>(null)
+  const [loadingResumo, setLoadingResumo] = useState(false)
 
   // Visitas de hoje (do banco de dados)
   const [visitasHoje, setVisitasHoje] = useState<VisitaHoje[]>([])
@@ -396,60 +412,114 @@ export default function RotasPage() {
     setShowSolicitarInspetorModal(true)
   }
 
-  const openEditObsModal = (cliente: Cliente) => {
-    setEditObsForm({
+  const openAnotacoesModal = async (cliente: Cliente) => {
+    setAnotacoesModalData({
       clienteId: cliente.id,
       clienteNome: cliente.nome,
-      observacoes: cliente.observacoes || '',
     })
-    setShowEditObsModal(true)
+    setNovaAnotacao('')
+    setResumoIA(null)
+    setShowAnotacoesModal(true)
+    await fetchAnotacoes(cliente.id)
   }
 
-  const handleSaveObservacoes = async () => {
+  const fetchAnotacoes = async (clienteId: string) => {
+    if (!selectedRota?.vendedor?.id) return
+    setLoadingAnotacoes(true)
     try {
-      setSavingObs(true)
+      const res = await fetch(`${API_URL}/anotacoes?clienteId=${clienteId}&vendedorId=${selectedRota.vendedor.id}`)
+      if (!res.ok) throw new Error('Erro ao carregar anotacoes')
+      const data = await res.json()
+      setAnotacoes(data)
+    } catch (err) {
+      console.error(err)
+      setAnotacoes([])
+    } finally {
+      setLoadingAnotacoes(false)
+    }
+  }
 
-      let textoFinal = editObsForm.observacoes
-
+  const handleAddAnotacao = async () => {
+    if (!novaAnotacao.trim() || !selectedRota?.vendedor?.id) return
+    setSavingAnotacao(true)
+    try {
       // Corrigir texto com IA antes de salvar
-      if (textoFinal && textoFinal.trim()) {
-        try {
-          const aiRes = await fetch(`${API_URL}/ai/corrigir-texto`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ texto: textoFinal }),
-          })
-          if (aiRes.ok) {
-            const aiData = await aiRes.json()
-            if (aiData.corrigido && aiData.textoCorrigido) {
-              textoFinal = aiData.textoCorrigido
-            }
+      let textoFinal = novaAnotacao
+      try {
+        const aiRes = await fetch(`${API_URL}/ai/corrigir-texto`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ texto: textoFinal }),
+        })
+        if (aiRes.ok) {
+          const aiData = await aiRes.json()
+          if (aiData.corrigido && aiData.textoCorrigido) {
+            textoFinal = aiData.textoCorrigido
           }
-        } catch {
-          // Se falhar a correção, usa o texto original
         }
+      } catch {
+        // Se falhar a correção, usa o texto original
       }
 
-      const res = await fetch(`${API_URL}/clientes/${editObsForm.clienteId}`, {
-        method: 'PUT',
+      const res = await fetch(`${API_URL}/anotacoes`, {
+        method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          observacoes: textoFinal || null,
+          clienteId: anotacoesModalData.clienteId,
+          vendedorId: selectedRota.vendedor.id,
+          texto: textoFinal,
         }),
       })
 
-      if (!res.ok) {
-        const data = await res.json()
-        throw new Error(data.error || 'Erro ao salvar observacoes')
-      }
+      if (!res.ok) throw new Error('Erro ao salvar anotacao')
 
-      setShowEditObsModal(false)
-      // Recarregar rotas para atualizar os dados do cliente
-      fetchRotas()
+      setNovaAnotacao('')
+      setResumoIA(null) // Limpa o resumo quando adiciona nova anotação
+      await fetchAnotacoes(anotacoesModalData.clienteId)
     } catch (err: any) {
       setError(err.message)
     } finally {
-      setSavingObs(false)
+      setSavingAnotacao(false)
+    }
+  }
+
+  const handleGerarResumo = async () => {
+    if (!selectedRota?.vendedor?.id) return
+    setLoadingResumo(true)
+    try {
+      const res = await fetch(`${API_URL}/anotacoes/resumir`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          clienteId: anotacoesModalData.clienteId,
+          vendedorId: selectedRota.vendedor.id,
+        }),
+      })
+
+      if (!res.ok) throw new Error('Erro ao gerar resumo')
+
+      const data = await res.json()
+      setResumoIA(data.resumo)
+    } catch (err: any) {
+      setError(err.message)
+    } finally {
+      setLoadingResumo(false)
+    }
+  }
+
+  const handleDeleteAnotacao = async (anotacaoId: string) => {
+    if (!confirm('Excluir esta anotacao?')) return
+    try {
+      const res = await fetch(`${API_URL}/anotacoes/${anotacaoId}`, {
+        method: 'DELETE',
+      })
+
+      if (!res.ok) throw new Error('Erro ao excluir anotacao')
+
+      setResumoIA(null)
+      await fetchAnotacoes(anotacoesModalData.clienteId)
+    } catch (err: any) {
+      setError(err.message)
     }
   }
 
@@ -1063,15 +1133,6 @@ export default function RotasPage() {
                                         )}
                                       </div>
                                     )}
-                                    {rc.cliente.observacoes && (
-                                      <div className="mt-2 p-2 rounded-md bg-[#3B82F6]/10 border border-[#3B82F6]/20 text-sm max-w-md">
-                                        <p className="text-xs text-[#3B82F6] font-medium mb-1 flex items-center gap-1">
-                                          <MessageSquare className="w-3 h-3" />
-                                          Ultima anotacao:
-                                        </p>
-                                        <p className="text-foreground line-clamp-3">{rc.cliente.observacoes}</p>
-                                      </div>
-                                    )}
                                   </div>
                                 </div>
                                 <div className="flex flex-col gap-2 flex-shrink-0">
@@ -1091,11 +1152,11 @@ export default function RotasPage() {
                                       <Button
                                         variant="default"
                                         size="sm"
-                                        onClick={() => openEditObsModal(rc.cliente)}
+                                        onClick={() => openAnotacoesModal(rc.cliente)}
                                         className="bg-[#3B82F6] hover:bg-[#3B82F6]/90 text-white"
                                       >
                                         <MessageSquare className="w-4 h-4 mr-2" />
-                                        {rc.cliente.observacoes ? 'Editar Anotacao' : 'Adicionar Anotacao'}
+                                        Anotacoes
                                       </Button>
                                     </>
                                   ) : fezCheckIn ? (
@@ -1128,11 +1189,11 @@ export default function RotasPage() {
                                       <Button
                                         variant="default"
                                         size="sm"
-                                        onClick={() => openEditObsModal(rc.cliente)}
+                                        onClick={() => openAnotacoesModal(rc.cliente)}
                                         className="bg-[#3B82F6] hover:bg-[#3B82F6]/90 text-white"
                                       >
                                         <MessageSquare className="w-4 h-4 mr-2" />
-                                        {rc.cliente.observacoes ? 'Editar Anotacao' : 'Adicionar Anotacao'}
+                                        Anotacoes
                                       </Button>
                                     </>
                                   ) : (
@@ -1165,11 +1226,11 @@ export default function RotasPage() {
                                       <Button
                                         variant="default"
                                         size="sm"
-                                        onClick={() => openEditObsModal(rc.cliente)}
+                                        onClick={() => openAnotacoesModal(rc.cliente)}
                                         className="bg-[#3B82F6] hover:bg-[#3B82F6]/90 text-white"
                                       >
                                         <MessageSquare className="w-4 h-4 mr-2" />
-                                        {rc.cliente.observacoes ? 'Editar Anotacao' : 'Adicionar Anotacao'}
+                                        Anotacoes
                                       </Button>
                                     </>
                                   )}
@@ -1457,15 +1518,15 @@ export default function RotasPage() {
         </div>
       )}
 
-      {/* Editar Observacoes Modal */}
-      {showEditObsModal && (
+      {/* Anotacoes Modal (novo sistema por vendedor) */}
+      {showAnotacoesModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center">
           <div
             className="absolute inset-0 bg-black/50 backdrop-blur-sm"
-            onClick={() => setShowEditObsModal(false)}
+            onClick={() => setShowAnotacoesModal(false)}
           />
-          <Card className="relative z-10 w-full max-w-lg mx-4 shadow-xl">
-            <CardHeader className="pb-4">
+          <Card className="relative z-10 w-full max-w-2xl mx-4 shadow-xl max-h-[90vh] overflow-hidden flex flex-col">
+            <CardHeader className="pb-4 flex-shrink-0">
               <div className="flex items-center justify-between">
                 <div>
                   <CardTitle className="flex items-center gap-2">
@@ -1473,59 +1534,138 @@ export default function RotasPage() {
                     Minhas Anotacoes
                   </CardTitle>
                   <p className="text-sm text-muted-foreground mt-1">
-                    Cliente: {editObsForm.clienteNome}
+                    Cliente: {anotacoesModalData.clienteNome}
                   </p>
                 </div>
                 <Button
                   variant="ghost"
                   size="sm"
                   className="h-8 w-8 p-0"
-                  onClick={() => setShowEditObsModal(false)}
+                  onClick={() => setShowAnotacoesModal(false)}
                 >
                   <X className="w-4 h-4" />
                 </Button>
               </div>
             </CardHeader>
-            <CardContent className="space-y-4">
+            <CardContent className="space-y-4 overflow-y-auto flex-1">
               <div className="p-3 bg-muted/50 rounded-lg text-sm text-muted-foreground">
                 <p>Essas anotacoes sao particulares suas sobre o cliente. Use para lembrar detalhes importantes das conversas.</p>
               </div>
 
-              <div className="space-y-2">
-                <Label>Anotacoes</Label>
-                <Textarea
-                  placeholder="Ex: Gosta da cor azul, preferencia por tratores menores, conversar sobre financiamento..."
-                  value={editObsForm.observacoes}
-                  onChange={(e: React.ChangeEvent<HTMLTextAreaElement>) => setEditObsForm({ ...editObsForm, observacoes: e.target.value })}
-                  rows={5}
-                />
+              {/* Botao de Resumo IA */}
+              {anotacoes.length > 0 && (
+                <div className="flex justify-end">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={handleGerarResumo}
+                    disabled={loadingResumo}
+                    className="gap-2"
+                  >
+                    {loadingResumo ? (
+                      <>
+                        <Loader2 className="w-4 h-4 animate-spin" />
+                        Gerando resumo...
+                      </>
+                    ) : (
+                      <>
+                        <RefreshCw className="w-4 h-4" />
+                        Resumir com IA
+                      </>
+                    )}
+                  </Button>
+                </div>
+              )}
+
+              {/* Resumo IA */}
+              {resumoIA && (
+                <div className="p-4 rounded-lg bg-primary/10 border border-primary/20">
+                  <p className="text-sm font-medium text-primary mb-2 flex items-center gap-2">
+                    <RefreshCw className="w-4 h-4" />
+                    Resumo gerado por IA
+                  </p>
+                  <p className="text-sm whitespace-pre-wrap">{resumoIA}</p>
+                </div>
+              )}
+
+              {/* Lista de anotacoes */}
+              <div className="space-y-3">
+                <Label>Historico de Anotacoes</Label>
+                {loadingAnotacoes ? (
+                  <div className="flex items-center justify-center py-8">
+                    <Loader2 className="w-6 h-6 animate-spin text-muted-foreground" />
+                  </div>
+                ) : anotacoes.length === 0 ? (
+                  <div className="text-center py-8 text-muted-foreground">
+                    <MessageSquare className="w-8 h-8 mx-auto mb-2 opacity-50" />
+                    <p className="text-sm">Nenhuma anotacao ainda</p>
+                  </div>
+                ) : (
+                  <div className="space-y-2 max-h-[200px] overflow-y-auto">
+                    {anotacoes.map((anotacao) => (
+                      <div
+                        key={anotacao.id}
+                        className="p-3 rounded-lg bg-muted/30 border border-border/50 group"
+                      >
+                        <div className="flex items-start justify-between gap-2">
+                          <div className="flex-1 min-w-0">
+                            <p className="text-sm">{anotacao.texto}</p>
+                            <p className="text-xs text-muted-foreground mt-1">
+                              {new Date(anotacao.createdAt).toLocaleDateString('pt-BR', {
+                                day: '2-digit',
+                                month: '2-digit',
+                                year: 'numeric',
+                                hour: '2-digit',
+                                minute: '2-digit',
+                              })}
+                            </p>
+                          </div>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            className="h-6 w-6 p-0 opacity-0 group-hover:opacity-100 transition-opacity"
+                            onClick={() => handleDeleteAnotacao(anotacao.id)}
+                          >
+                            <Trash2 className="w-3 h-3 text-destructive" />
+                          </Button>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
               </div>
 
-              <div className="flex gap-2 pt-4">
-                <Button
-                  variant="outline"
-                  className="flex-1"
-                  onClick={() => setShowEditObsModal(false)}
-                >
-                  Cancelar
-                </Button>
-                <Button
-                  className="flex-1"
-                  onClick={handleSaveObservacoes}
-                  disabled={savingObs}
-                >
-                  {savingObs ? (
-                    <>
-                      <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                      Salvando...
-                    </>
-                  ) : (
-                    <>
-                      <CheckCircle className="w-4 h-4 mr-2" />
-                      Salvar
-                    </>
-                  )}
-                </Button>
+              {/* Adicionar nova anotacao */}
+              <div className="space-y-2 pt-2 border-t border-border/50">
+                <Label>Nova Anotacao</Label>
+                <div className="flex gap-2">
+                  <Textarea
+                    placeholder="Digite sua anotacao..."
+                    value={novaAnotacao}
+                    onChange={(e: React.ChangeEvent<HTMLTextAreaElement>) => setNovaAnotacao(e.target.value)}
+                    rows={2}
+                    className="flex-1"
+                  />
+                </div>
+                <div className="flex justify-end">
+                  <Button
+                    size="sm"
+                    onClick={handleAddAnotacao}
+                    disabled={savingAnotacao || !novaAnotacao.trim()}
+                  >
+                    {savingAnotacao ? (
+                      <>
+                        <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                        Salvando...
+                      </>
+                    ) : (
+                      <>
+                        <Plus className="w-4 h-4 mr-2" />
+                        Adicionar
+                      </>
+                    )}
+                  </Button>
+                </div>
               </div>
             </CardContent>
           </Card>
