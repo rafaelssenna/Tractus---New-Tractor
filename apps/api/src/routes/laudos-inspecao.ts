@@ -755,10 +755,14 @@ Retorne APENAS o texto do sumário, sem títulos ou explicações.`
 
     let dataFilter = {}
     if (dataInicio || dataFim) {
+      // Ajustar datas para incluir o dia inteiro (UTC)
+      const inicio = dataInicio ? new Date(dataInicio + 'T00:00:00.000Z') : undefined
+      const fim = dataFim ? new Date(dataFim + 'T23:59:59.999Z') : undefined
+
       dataFilter = {
         dataInspecao: {
-          ...(dataInicio && { gte: new Date(dataInicio) }),
-          ...(dataFim && { lte: new Date(dataFim) }),
+          ...(inicio && { gte: inicio }),
+          ...(fim && { lte: fim }),
         },
       }
     }

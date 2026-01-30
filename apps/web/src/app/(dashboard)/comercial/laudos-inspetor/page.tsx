@@ -131,7 +131,9 @@ export default function LaudosInspetorPage() {
   }
 
   const formatDate = (dateString: string) => {
-    return new Date(dateString + 'T12:00:00').toLocaleDateString('pt-BR', {
+    // Se já é uma data ISO completa, usa direto. Senão, adiciona T12:00:00
+    const date = dateString.includes('T') ? new Date(dateString) : new Date(dateString + 'T12:00:00')
+    return date.toLocaleDateString('pt-BR', {
       day: '2-digit',
       month: '2-digit',
       year: 'numeric',
@@ -231,14 +233,14 @@ export default function LaudosInspetorPage() {
             <table class="measurements-table">
               <thead>
                 <tr>
-                  <th style="width: 18%;">Componente</th>
-                  <th style="width: 12%;">Dim. Std</th>
-                  <th style="width: 12%;">Lim. Reparo</th>
-                  <th style="width: 12%;">Medição LE</th>
-                  <th style="width: 12%;">Medição LD</th>
-                  <th style="width: 10%;">% Desg. LE</th>
-                  <th style="width: 10%;">% Desg. LD</th>
-                  <th style="width: 14%;">Status</th>
+                  <th style="width: 15%;">Componente</th>
+                  <th style="width: 10%;">Dim. Std</th>
+                  <th style="width: 10%;">Lim. Reparo</th>
+                  <th style="width: 10%;">Medição LE</th>
+                  <th style="width: 10%;">Medição LD</th>
+                  <th style="width: 9%;">% Desg. LE</th>
+                  <th style="width: 9%;">% Desg. LD</th>
+                  <th style="width: 27%;">NOTA</th>
                 </tr>
               </thead>
               <tbody>
@@ -257,7 +259,9 @@ export default function LaudosInspetorPage() {
                     return ld
                   }
                   const status = maxStatus(med.statusLE, med.statusLD)
-                  const statusLabel = status === 'DENTRO_PARAMETROS' ? 'OK' : status === 'VERIFICAR' ? 'VERIFICAR' : status === 'FORA_PARAMETROS' ? 'FORA' : '-'
+                  // Nota com texto completo como no documento de referência
+                  const notaClass = status === 'FORA_PARAMETROS' ? 'status-fora' : (status === 'VERIFICAR' ? 'status-verificar' : 'status-ok')
+                  const notaText = status === 'FORA_PARAMETROS' ? 'FORA DOS PARÂMETROS DE DESGASTE' : 'DENTRO DOS PARÂMETROS DE DESGASTE'
 
                   return `
                     <tr>
@@ -268,7 +272,7 @@ export default function LaudosInspetorPage() {
                       <td>${med.medicaoLD !== null ? med.medicaoLD.toFixed(2) : '-'}</td>
                       <td class="${getStatusClass(med.statusLE)}">${med.desgasteLE !== null ? med.desgasteLE.toFixed(1) + '%' : '-'}</td>
                       <td class="${getStatusClass(med.statusLD)}">${med.desgasteLD !== null ? med.desgasteLD.toFixed(1) + '%' : '-'}</td>
-                      <td class="${getStatusClass(status)}">${statusLabel}</td>
+                      <td class="${notaClass}" style="font-size: 8px; font-weight: bold;">${notaText}</td>
                     </tr>
                   `
                 }).join('')}
@@ -276,8 +280,8 @@ export default function LaudosInspetorPage() {
             </table>
             <div class="legend">
               <div class="legend-item"><div class="legend-color" style="background: #d4edda;"></div> Dentro dos parâmetros (≤70%)</div>
-              <div class="legend-item"><div class="legend-color" style="background: #fff3cd;"></div> Verificar (70-90%)</div>
-              <div class="legend-item"><div class="legend-color" style="background: #f8d7da;"></div> Fora dos parâmetros (≥90%)</div>
+              <div class="legend-item"><div class="legend-color" style="background: #fff3cd;"></div> Verificar (70-100%)</div>
+              <div class="legend-item"><div class="legend-color" style="background: #f8d7da;"></div> Fora dos parâmetros (>100%)</div>
             </div>
           </div>
 
