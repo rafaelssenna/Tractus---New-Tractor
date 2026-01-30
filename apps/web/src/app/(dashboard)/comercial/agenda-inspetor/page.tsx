@@ -454,7 +454,7 @@ export default function AgendaInspetorPage() {
                 size="sm"
                 variant="outline"
                 className="text-primary hover:bg-primary/10"
-                onClick={() => router.push(`/comercial/laudos-inspetor?visita=${visita.id}`)}
+                onClick={() => router.push(`/comercial/laudos-inspetor/editar?visita=${visita.id}`)}
               >
                 <ClipboardCheck className="w-4 h-4 mr-1" />
                 Fazer Laudo

@@ -488,6 +488,61 @@ export async function laudosInspecaoRoutes(app: FastifyInstance) {
     return pdfData
   })
 
+  // Histórico de laudos do inspetor (lista simples)
+  app.get('/historico/:inspetorId', async (request) => {
+    const { inspetorId } = request.params as { inspetorId: string }
+    const { dataInicio, dataFim } = request.query as {
+      dataInicio?: string
+      dataFim?: string
+    }
+
+    let dataFilter = {}
+    if (dataInicio || dataFim) {
+      dataFilter = {
+        dataInspecao: {
+          ...(dataInicio && { gte: new Date(dataInicio) }),
+          ...(dataFim && { lte: new Date(dataFim) }),
+        },
+      }
+    }
+
+    const laudos = await db.laudoInspecao.findMany({
+      where: {
+        inspetorId,
+        ...dataFilter,
+      },
+      include: {
+        visitaTecnica: {
+          include: {
+            cliente: {
+              select: { nome: true, cidade: true, estado: true },
+            },
+          },
+        },
+        componentes: {
+          select: { id: true, nome: true, condicao: true },
+          orderBy: { ordem: 'asc' },
+        },
+      },
+      orderBy: { dataInspecao: 'desc' },
+    })
+
+    return laudos.map((laudo) => ({
+      id: laudo.id,
+      numero: laudo.visitaTecnica.numero || `LAUDO-${laudo.id.slice(0, 8)}`,
+      equipamento: laudo.equipamento,
+      numeroSerie: laudo.numeroSerie,
+      dataInspecao: laudo.dataInspecao.toISOString(),
+      status: laudo.status,
+      dataEnvio: laudo.dataEnvio?.toISOString() || null,
+      componentes: laudo.componentes,
+      visitaTecnica: {
+        id: laudo.visitaTecnica.id,
+        cliente: laudo.visitaTecnica.cliente,
+      },
+    }))
+  })
+
   // Laudos do inspetor logado (para a aba do inspetor)
   app.get('/meus-laudos/:inspetorId', async (request) => {
     const { inspetorId } = request.params as { inspetorId: string }
