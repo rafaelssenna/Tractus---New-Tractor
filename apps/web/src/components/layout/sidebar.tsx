@@ -27,6 +27,7 @@ import {
   Calendar,
   ClipboardCheck,
   Receipt,
+  Fuel,
 } from 'lucide-react'
 import { useState } from 'react'
 import { useAuth, canAccessRoute } from '@/contexts/auth-context'
@@ -54,6 +55,7 @@ const allMenuItems: MenuItem[] = [
       { title: 'Representantes Comerciais', href: '/comercial/vendedores', icon: UserCheck },
       { title: 'Rotas', href: '/comercial/rotas', icon: Route },
       { title: 'Despesas', href: '/comercial/despesas', icon: Receipt },
+      { title: 'Despesas Veículo', href: '/comercial/despesas-veiculo', icon: Fuel },
       { title: 'Agenda do Inspetor', href: '/comercial/agenda-inspetor', icon: Calendar },
     ],
   },
