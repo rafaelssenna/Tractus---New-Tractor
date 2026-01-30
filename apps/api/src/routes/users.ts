@@ -235,4 +235,16 @@ export async function usersRoutes(app: FastifyInstance) {
 
     return reply.status(204).send()
   })
+
+  // Migrar usuários TECNICO para INSPETOR
+  app.post('/migrate-tecnico-to-inspetor', async (request, reply) => {
+    // Atualizar todos os usuários com role TECNICO para INSPETOR usando SQL direto
+    const result = await db.$executeRaw`UPDATE users SET role = 'INSPETOR' WHERE role = 'TECNICO'`
+
+    return {
+      success: true,
+      message: `${result} usuário(s) migrado(s) de TECNICO para INSPETOR`,
+      count: result,
+    }
+  })
 }
