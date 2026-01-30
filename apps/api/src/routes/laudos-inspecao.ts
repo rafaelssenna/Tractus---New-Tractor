@@ -56,7 +56,7 @@ async function corrigirTextoTecnico(texto: string): Promise<string> {
     }
 
     console.log('[IA] Corrigindo texto:', texto.substring(0, 50) + '...')
-    const model = genAI.getGenerativeModel({ model: 'gemini-1.5-flash' })
+    const model = genAI.getGenerativeModel({ model: 'gemini-pro' })
 
     const prompt = `Você é um especialista em manutenção de equipamentos pesados (tratores, escavadeiras, etc).
 Corrija o texto a seguir mantendo o significado original, mas:
