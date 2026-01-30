@@ -140,7 +140,7 @@ export default function LaudosInspetorPage() {
             * { margin: 0; padding: 0; box-sizing: border-box; }
             body { font-family: Arial, sans-serif; padding: 20px; color: #333; }
             .header { display: flex; align-items: center; justify-content: space-between; border-bottom: 2px solid #000; padding-bottom: 15px; margin-bottom: 20px; }
-            .logo { height: 60px; }
+            .logo { height: 50px; width: auto; }
             .title { text-align: center; flex: 1; }
             .title h1 { font-size: 20px; margin-bottom: 5px; }
             .title p { font-size: 12px; color: #666; }
@@ -163,7 +163,7 @@ export default function LaudosInspetorPage() {
         </head>
         <body>
           <div class="header">
-            <img src="/logo.png" alt="New Tractor" class="logo" />
+            <img src="/newtractor-logo.png" alt="New Tractor" class="logo" />
             <div class="title">
               <h1>LAUDO DE INSPEÇÃO TÉCNICA</h1>
               <p>Nº ${data.numero}</p>
