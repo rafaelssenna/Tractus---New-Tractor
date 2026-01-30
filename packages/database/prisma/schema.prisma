@@ -125,6 +125,21 @@ enum CondicaoComponente {
   CRITICO
 }
 
+enum TipoComponenteRodante {
+  ESTEIRA
+  SAPATA
+  ROLETE_INFERIOR
+  ROLETE_SUPERIOR
+  RODA_GUIA
+  RODA_MOTRIZ
+}
+
+enum StatusMedicao {
+  DENTRO_PARAMETROS
+  VERIFICAR
+  FORA_PARAMETROS
+}
+
 // ==========================================
 // USUÁRIOS E AUTENTICAÇÃO
 // ==========================================
@@ -723,15 +738,26 @@ model LaudoInspecao {
   // Dados do equipamento inspecionado
   equipamento       String              // Nome/modelo do equipamento
   numeroSerie       String              // Nº de série
+  frota             String?             // Código da frota
+
+  // Horímetros
+  horimetroTotal    Int?                // Horímetro total
+  horimetroEsteira  Int?                // Horímetro da esteira
+
+  // Condição do solo
+  condicaoSolo      CondicaoSolo?
 
   // Data da inspeção
   dataInspecao      DateTime            @db.Date
 
-  // Componentes avaliados
-  componentes       ComponenteInspecao[]
+  // Medições de componentes rodantes (nova estrutura)
+  medicoesRodante   MedicaoRodante[]
 
-  // Fotos gerais (até 5)
-  fotos             String[]            // URLs das fotos no IMGBB
+  // Fotos rotuladas dos componentes
+  fotosComponentes  FotoComponenteRodante[]
+
+  // Sumário técnico / Observações
+  sumario           String?             @db.Text
 
   // Status do laudo
   status            StatusLaudoInspecao @default(RASCUNHO)
@@ -741,6 +767,9 @@ model LaudoInspecao {
 
   createdAt         DateTime            @default(now())
   updatedAt         DateTime            @updatedAt
+
+  // Manter relação antiga para compatibilidade (será removida depois)
+  componentes       ComponenteInspecao[]
 
   @@map("laudos_inspecao")
 }
@@ -766,6 +795,74 @@ model ComponenteInspecao {
   createdAt         DateTime            @default(now())
 
   @@map("componentes_inspecao")
+}
+
+// ==========================================
+// MEDIÇÕES DE COMPONENTES RODANTES
+// ==========================================
+
+model MedicaoRodante {
+  id                String              @id @default(cuid())
+
+  laudoInspecaoId   String
+  laudoInspecao     LaudoInspecao       @relation(fields: [laudoInspecaoId], references: [id], onDelete: Cascade)
+
+  // Tipo do componente
+  tipo              TipoComponenteRodante
+
+  // Dimensões padrão e limites (em mm)
+  dimensaoStd       Decimal?            @db.Decimal(8, 2)  // Dimensão padrão do fabricante
+  limiteReparo      Decimal?            @db.Decimal(8, 2)  // Limite de reparo
+
+  // Medições lado esquerdo e direito (em mm)
+  medicaoLE         Decimal?            @db.Decimal(8, 2)  // Medição lado esquerdo
+  medicaoLD         Decimal?            @db.Decimal(8, 2)  // Medição lado direito
+
+  // Percentual de desgaste calculado
+  desgasteLE        Decimal?            @db.Decimal(5, 2)  // % desgaste lado esquerdo
+  desgasteLD        Decimal?            @db.Decimal(5, 2)  // % desgaste lado direito
+
+  // Status da medição
+  statusLE          StatusMedicao?
+  statusLD          StatusMedicao?
+
+  // Observação específica do componente
+  observacao        String?             @db.Text
+
+  // Ordem de exibição
+  ordem             Int                 @default(0)
+
+  createdAt         DateTime            @default(now())
+  updatedAt         DateTime            @updatedAt
+
+  @@unique([laudoInspecaoId, tipo])
+  @@map("medicoes_rodante")
+}
+
+model FotoComponenteRodante {
+  id                String              @id @default(cuid())
+
+  laudoInspecaoId   String
+  laudoInspecao     LaudoInspecao       @relation(fields: [laudoInspecaoId], references: [id], onDelete: Cascade)
+
+  // Tipo do componente
+  tipo              TipoComponenteRodante
+
+  // Lado (LE = esquerdo, LD = direito, AMBOS = geral)
+  lado              String              @default("AMBOS") // LE, LD, AMBOS
+
+  // URL da foto
+  url               String
+
+  // Legenda/descrição
+  legenda           String?
+
+  // Ordem de exibição
+  ordem             Int                 @default(0)
+
+  createdAt         DateTime            @default(now())
+
+  @@map("fotos_componente_rodante")
 }
 
 // ==========================================

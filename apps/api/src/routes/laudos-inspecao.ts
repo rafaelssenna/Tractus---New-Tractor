@@ -5,26 +5,96 @@ import { GoogleGenerativeAI } from '@google/generative-ai'
 
 const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY || '')
 
-const componenteSchema = z.object({
-  nome: z.string().min(1, 'Nome do componente é obrigatório'),
-  condicao: z.enum(['BOM', 'REGULAR', 'CRITICO']),
+// Tipos de componentes rodantes
+const TIPOS_COMPONENTES = [
+  'ESTEIRA',
+  'SAPATA',
+  'ROLETE_INFERIOR',
+  'ROLETE_SUPERIOR',
+  'RODA_GUIA',
+  'RODA_MOTRIZ',
+] as const
+
+// Labels para os tipos
+const TIPO_LABELS: Record<string, string> = {
+  ESTEIRA: 'Esteira',
+  SAPATA: 'Sapata',
+  ROLETE_INFERIOR: 'Rolete Inferior',
+  ROLETE_SUPERIOR: 'Rolete Superior',
+  RODA_GUIA: 'Roda Guia',
+  RODA_MOTRIZ: 'Roda Motriz',
+}
+
+// Labels para status
+const STATUS_LABELS: Record<string, string> = {
+  DENTRO_PARAMETROS: 'Dentro dos parâmetros',
+  VERIFICAR: 'Verificar',
+  FORA_PARAMETROS: 'Fora dos parâmetros',
+}
+
+// Schema para medição rodante
+const medicaoRodanteSchema = z.object({
+  tipo: z.enum(TIPOS_COMPONENTES),
+  dimensaoStd: z.number().nullable().optional(),
+  limiteReparo: z.number().nullable().optional(),
+  medicaoLE: z.number().nullable().optional(),
+  medicaoLD: z.number().nullable().optional(),
   observacao: z.string().optional(),
-  ordem: z.number().optional(),
 })
 
+// Schema para foto de componente
+const fotoComponenteSchema = z.object({
+  tipo: z.enum(TIPOS_COMPONENTES),
+  lado: z.enum(['LE', 'LD', 'AMBOS']).default('AMBOS'),
+  url: z.string().url(),
+  legenda: z.string().optional(),
+})
+
+// Schema principal do laudo
 const laudoInspecaoSchema = z.object({
   visitaTecnicaId: z.string(),
+  inspetorId: z.string(),
   equipamento: z.string().min(1, 'Equipamento é obrigatório'),
   numeroSerie: z.string().min(1, 'Número de série é obrigatório'),
+  frota: z.string().optional(),
+  horimetroTotal: z.number().int().nullable().optional(),
+  horimetroEsteira: z.number().int().nullable().optional(),
+  condicaoSolo: z.enum(['BAIXO_IMPACTO', 'MEDIO_IMPACTO', 'ALTO_IMPACTO']).nullable().optional(),
   dataInspecao: z.string().transform((v) => new Date(v)),
-  componentes: z.array(componenteSchema).min(1, 'Adicione pelo menos um componente'),
-  fotos: z.array(z.string()).max(5, 'Máximo de 5 fotos'),
+  medicoes: z.array(medicaoRodanteSchema),
+  fotos: z.array(fotoComponenteSchema).optional(),
+  sumario: z.string().optional(),
 })
 
-const CONDICAO_LABELS: Record<string, string> = {
-  BOM: 'Bom',
-  REGULAR: 'Regular',
-  CRITICO: 'Crítico',
+// Calcular percentual de desgaste
+function calcularDesgaste(dimensaoStd: number | null, limiteReparo: number | null, medicao: number | null): { desgaste: number | null; status: string | null } {
+  if (!dimensaoStd || !limiteReparo || !medicao) {
+    return { desgaste: null, status: null }
+  }
+
+  // Fórmula: ((dimensaoStd - medicao) / (dimensaoStd - limiteReparo)) * 100
+  const faixaTotal = dimensaoStd - limiteReparo
+  if (faixaTotal <= 0) {
+    return { desgaste: null, status: null }
+  }
+
+  const desgasteAtual = dimensaoStd - medicao
+  const percentual = (desgasteAtual / faixaTotal) * 100
+
+  // Determinar status
+  let status: string
+  if (percentual <= 70) {
+    status = 'DENTRO_PARAMETROS'
+  } else if (percentual <= 90) {
+    status = 'VERIFICAR'
+  } else {
+    status = 'FORA_PARAMETROS'
+  }
+
+  return {
+    desgaste: Math.round(percentual * 100) / 100,
+    status,
+  }
 }
 
 // Gerar número da visita: DD/MM/AAAA-NNNN
@@ -34,7 +104,6 @@ async function gerarNumeroVisita(dataVisita: Date): Promise<string> {
   const ano = dataVisita.getFullYear()
   const dataFormatada = `${dia}/${mes}/${ano}`
 
-  // Contar quantas visitas já têm número nessa data
   const count = await db.visitaTecnica.count({
     where: {
       numero: {
@@ -124,7 +193,10 @@ export async function laudosInspecaoRoutes(app: FastifyInstance) {
             },
           },
         },
-        componentes: {
+        medicoesRodante: {
+          orderBy: { ordem: 'asc' },
+        },
+        fotosComponentes: {
           orderBy: { ordem: 'asc' },
         },
       },
@@ -156,7 +228,10 @@ export async function laudosInspecaoRoutes(app: FastifyInstance) {
             },
           },
         },
-        componentes: {
+        medicoesRodante: {
+          orderBy: { ordem: 'asc' },
+        },
+        fotosComponentes: {
           orderBy: { ordem: 'asc' },
         },
       },
@@ -191,7 +266,10 @@ export async function laudosInspecaoRoutes(app: FastifyInstance) {
             },
           },
         },
-        componentes: {
+        medicoesRodante: {
+          orderBy: { ordem: 'asc' },
+        },
+        fotosComponentes: {
           orderBy: { ordem: 'asc' },
         },
       },
@@ -207,11 +285,6 @@ export async function laudosInspecaoRoutes(app: FastifyInstance) {
   // Criar laudo de inspeção
   app.post('/', async (request, reply) => {
     const data = laudoInspecaoSchema.parse(request.body)
-    const { inspetorId } = request.body as { inspetorId: string }
-
-    if (!inspetorId) {
-      return reply.status(400).send({ error: 'ID do inspetor é obrigatório' })
-    }
 
     // Verificar se visita existe e não tem laudo
     const visita = await db.visitaTecnica.findUnique({
@@ -237,28 +310,51 @@ export async function laudosInspecaoRoutes(app: FastifyInstance) {
       })
     }
 
-    // Corrigir textos das observações com IA
-    const componentesCorrigidos = await Promise.all(
-      data.componentes.map(async (comp, index) => ({
-        nome: comp.nome,
-        condicao: comp.condicao,
-        observacao: comp.observacao ? await corrigirTextoTecnico(comp.observacao) : null,
-        ordem: comp.ordem ?? index,
-      }))
-    )
+    // Processar medições calculando desgaste
+    const medicoesProcessadas = data.medicoes.map((med, index) => {
+      const calcLE = calcularDesgaste(med.dimensaoStd ?? null, med.limiteReparo ?? null, med.medicaoLE ?? null)
+      const calcLD = calcularDesgaste(med.dimensaoStd ?? null, med.limiteReparo ?? null, med.medicaoLD ?? null)
+
+      return {
+        tipo: med.tipo as any,
+        dimensaoStd: med.dimensaoStd ?? null,
+        limiteReparo: med.limiteReparo ?? null,
+        medicaoLE: med.medicaoLE ?? null,
+        medicaoLD: med.medicaoLD ?? null,
+        desgasteLE: calcLE.desgaste,
+        desgasteLD: calcLD.desgaste,
+        statusLE: calcLE.status as any,
+        statusLD: calcLD.status as any,
+        observacao: med.observacao || null,
+        ordem: index,
+      }
+    })
 
     // Criar laudo
     const laudo = await db.laudoInspecao.create({
       data: {
         visitaTecnicaId: data.visitaTecnicaId,
-        inspetorId,
+        inspetorId: data.inspetorId,
         equipamento: data.equipamento,
         numeroSerie: data.numeroSerie,
+        frota: data.frota || null,
+        horimetroTotal: data.horimetroTotal ?? null,
+        horimetroEsteira: data.horimetroEsteira ?? null,
+        condicaoSolo: data.condicaoSolo ?? null,
         dataInspecao: data.dataInspecao,
-        fotos: data.fotos,
-        componentes: {
-          create: componentesCorrigidos,
+        sumario: data.sumario || null,
+        medicoesRodante: {
+          create: medicoesProcessadas,
         },
+        fotosComponentes: data.fotos ? {
+          create: data.fotos.map((foto, index) => ({
+            tipo: foto.tipo as any,
+            lado: foto.lado,
+            url: foto.url,
+            legenda: foto.legenda || null,
+            ordem: index,
+          })),
+        } : undefined,
       },
       include: {
         inspetor: {
@@ -271,7 +367,10 @@ export async function laudosInspecaoRoutes(app: FastifyInstance) {
             },
           },
         },
-        componentes: {
+        medicoesRodante: {
+          orderBy: { ordem: 'asc' },
+        },
+        fotosComponentes: {
           orderBy: { ordem: 'asc' },
         },
       },
@@ -295,29 +394,57 @@ export async function laudosInspecaoRoutes(app: FastifyInstance) {
       return reply.status(400).send({ error: 'Laudo já foi enviado e não pode ser alterado' })
     }
 
-    // Se tem componentes, corrigir textos e atualizar
-    if (data.componentes) {
-      // Deletar componentes existentes
-      await db.componenteInspecao.deleteMany({
+    // Atualizar medições se fornecidas
+    if (data.medicoes) {
+      // Deletar medições existentes
+      await db.medicaoRodante.deleteMany({
         where: { laudoInspecaoId: id },
       })
 
-      // Corrigir textos e recriar
-      const componentesCorrigidos = await Promise.all(
-        data.componentes.map(async (comp, index) => ({
-          nome: comp.nome,
-          condicao: comp.condicao,
-          observacao: comp.observacao ? await corrigirTextoTecnico(comp.observacao) : null,
-          ordem: comp.ordem ?? index,
-        }))
-      )
+      // Criar novas medições
+      const medicoesProcessadas = data.medicoes.map((med, index) => {
+        const calcLE = calcularDesgaste(med.dimensaoStd ?? null, med.limiteReparo ?? null, med.medicaoLE ?? null)
+        const calcLD = calcularDesgaste(med.dimensaoStd ?? null, med.limiteReparo ?? null, med.medicaoLD ?? null)
 
-      await db.componenteInspecao.createMany({
-        data: componentesCorrigidos.map((comp) => ({
+        return {
           laudoInspecaoId: id,
-          ...comp,
-        })),
+          tipo: med.tipo as any,
+          dimensaoStd: med.dimensaoStd ?? null,
+          limiteReparo: med.limiteReparo ?? null,
+          medicaoLE: med.medicaoLE ?? null,
+          medicaoLD: med.medicaoLD ?? null,
+          desgasteLE: calcLE.desgaste,
+          desgasteLD: calcLD.desgaste,
+          statusLE: calcLE.status as any,
+          statusLD: calcLD.status as any,
+          observacao: med.observacao || null,
+          ordem: index,
+        }
       })
+
+      await db.medicaoRodante.createMany({
+        data: medicoesProcessadas,
+      })
+    }
+
+    // Atualizar fotos se fornecidas
+    if (data.fotos) {
+      await db.fotoComponenteRodante.deleteMany({
+        where: { laudoInspecaoId: id },
+      })
+
+      if (data.fotos.length > 0) {
+        await db.fotoComponenteRodante.createMany({
+          data: data.fotos.map((foto, index) => ({
+            laudoInspecaoId: id,
+            tipo: foto.tipo as any,
+            lado: foto.lado,
+            url: foto.url,
+            legenda: foto.legenda || null,
+            ordem: index,
+          })),
+        })
+      }
     }
 
     // Atualizar laudo
@@ -326,8 +453,12 @@ export async function laudosInspecaoRoutes(app: FastifyInstance) {
       data: {
         ...(data.equipamento && { equipamento: data.equipamento }),
         ...(data.numeroSerie && { numeroSerie: data.numeroSerie }),
+        ...(data.frota !== undefined && { frota: data.frota || null }),
+        ...(data.horimetroTotal !== undefined && { horimetroTotal: data.horimetroTotal }),
+        ...(data.horimetroEsteira !== undefined && { horimetroEsteira: data.horimetroEsteira }),
+        ...(data.condicaoSolo !== undefined && { condicaoSolo: data.condicaoSolo }),
         ...(data.dataInspecao && { dataInspecao: data.dataInspecao }),
-        ...(data.fotos && { fotos: data.fotos }),
+        ...(data.sumario !== undefined && { sumario: data.sumario || null }),
       },
       include: {
         inspetor: {
@@ -340,7 +471,10 @@ export async function laudosInspecaoRoutes(app: FastifyInstance) {
             },
           },
         },
-        componentes: {
+        medicoesRodante: {
+          orderBy: { ordem: 'asc' },
+        },
+        fotosComponentes: {
           orderBy: { ordem: 'asc' },
         },
       },
@@ -355,7 +489,7 @@ export async function laudosInspecaoRoutes(app: FastifyInstance) {
 
     const laudo = await db.laudoInspecao.findUnique({
       where: { id },
-      include: { componentes: true },
+      include: { medicoesRodante: true },
     })
 
     if (!laudo) {
@@ -366,11 +500,11 @@ export async function laudosInspecaoRoutes(app: FastifyInstance) {
       return reply.status(400).send({ error: 'Laudo já foi enviado' })
     }
 
-    if (laudo.componentes.length === 0) {
-      return reply.status(400).send({ error: 'Adicione pelo menos um componente antes de enviar' })
+    if (laudo.medicoesRodante.length === 0) {
+      return reply.status(400).send({ error: 'Adicione pelo menos uma medição antes de enviar' })
     }
 
-    // Atualizar status do laudo e marcar visita como REALIZADA
+    // Atualizar status do laudo
     const laudoAtualizado = await db.laudoInspecao.update({
       where: { id },
       data: {
@@ -388,7 +522,10 @@ export async function laudosInspecaoRoutes(app: FastifyInstance) {
             },
           },
         },
-        componentes: {
+        medicoesRodante: {
+          orderBy: { ordem: 'asc' },
+        },
+        fotosComponentes: {
           orderBy: { ordem: 'asc' },
         },
       },
@@ -461,8 +598,11 @@ export async function laudosInspecaoRoutes(app: FastifyInstance) {
             },
           },
         },
-        componentes: {
+        medicoesRodante: {
           orderBy: { ordem: 'asc' },
+        },
+        fotosComponentes: {
+          orderBy: [{ tipo: 'asc' }, { lado: 'asc' }],
         },
       },
     })
@@ -487,13 +627,39 @@ export async function laudosInspecaoRoutes(app: FastifyInstance) {
       vendedor: laudo.visitaTecnica.vendedor.user.name,
       equipamento: laudo.equipamento,
       numeroSerie: laudo.numeroSerie,
-      componentes: laudo.componentes.map((comp) => ({
-        nome: comp.nome,
-        condicao: comp.condicao,
-        condicaoLabel: CONDICAO_LABELS[comp.condicao],
-        observacao: comp.observacao,
+      frota: laudo.frota,
+      horimetroTotal: laudo.horimetroTotal,
+      horimetroEsteira: laudo.horimetroEsteira,
+      condicaoSolo: laudo.condicaoSolo,
+      condicaoSoloLabel: laudo.condicaoSolo ? {
+        BAIXO_IMPACTO: 'Baixo Impacto',
+        MEDIO_IMPACTO: 'Médio Impacto',
+        ALTO_IMPACTO: 'Alto Impacto',
+      }[laudo.condicaoSolo] : null,
+      medicoes: laudo.medicoesRodante.map((med) => ({
+        tipo: med.tipo,
+        tipoLabel: TIPO_LABELS[med.tipo],
+        dimensaoStd: med.dimensaoStd ? Number(med.dimensaoStd) : null,
+        limiteReparo: med.limiteReparo ? Number(med.limiteReparo) : null,
+        medicaoLE: med.medicaoLE ? Number(med.medicaoLE) : null,
+        medicaoLD: med.medicaoLD ? Number(med.medicaoLD) : null,
+        desgasteLE: med.desgasteLE ? Number(med.desgasteLE) : null,
+        desgasteLD: med.desgasteLD ? Number(med.desgasteLD) : null,
+        statusLE: med.statusLE,
+        statusLELabel: med.statusLE ? STATUS_LABELS[med.statusLE] : null,
+        statusLD: med.statusLD,
+        statusLDLabel: med.statusLD ? STATUS_LABELS[med.statusLD] : null,
+        observacao: med.observacao,
       })),
-      fotos: laudo.fotos,
+      fotos: laudo.fotosComponentes.map((foto) => ({
+        tipo: foto.tipo,
+        tipoLabel: TIPO_LABELS[foto.tipo],
+        lado: foto.lado,
+        ladoLabel: foto.lado === 'LE' ? 'Lado Esquerdo' : foto.lado === 'LD' ? 'Lado Direito' : '',
+        url: foto.url,
+        legenda: foto.legenda,
+      })),
+      sumario: laudo.sumario,
       status: laudo.status,
       dataEnvio: laudo.dataEnvio?.toLocaleDateString('pt-BR'),
     }
@@ -532,8 +698,8 @@ export async function laudosInspecaoRoutes(app: FastifyInstance) {
             },
           },
         },
-        componentes: {
-          select: { id: true, nome: true, condicao: true },
+        medicoesRodante: {
+          select: { id: true, tipo: true, desgasteLE: true, desgasteLD: true, statusLE: true, statusLD: true },
           orderBy: { ordem: 'asc' },
         },
       },
@@ -545,10 +711,11 @@ export async function laudosInspecaoRoutes(app: FastifyInstance) {
       numero: laudo.visitaTecnica.numero || `LAUDO-${laudo.id.slice(0, 8)}`,
       equipamento: laudo.equipamento,
       numeroSerie: laudo.numeroSerie,
+      frota: laudo.frota,
       dataInspecao: laudo.dataInspecao.toISOString(),
       status: laudo.status,
       dataEnvio: laudo.dataEnvio?.toISOString() || null,
-      componentes: laudo.componentes,
+      medicoes: laudo.medicoesRodante,
       visitaTecnica: {
         id: laudo.visitaTecnica.id,
         cliente: laudo.visitaTecnica.cliente,
@@ -593,7 +760,10 @@ export async function laudosInspecaoRoutes(app: FastifyInstance) {
         },
         laudoInspecao: {
           include: {
-            componentes: {
+            medicoesRodante: {
+              orderBy: { ordem: 'asc' },
+            },
+            fotosComponentes: {
               orderBy: { ordem: 'asc' },
             },
           },
@@ -634,5 +804,23 @@ export async function laudosInspecaoRoutes(app: FastifyInstance) {
       }))
 
     return resultado
+  })
+
+  // Obter valores padrão para componentes por equipamento
+  app.get('/valores-padrao/:equipamento', async (request) => {
+    const { equipamento } = request.params as { equipamento: string }
+
+    // Valores padrão genéricos para material rodante de escavadeiras
+    // Estes podem ser personalizados por modelo de equipamento no futuro
+    const valoresPadrao = {
+      ESTEIRA: { dimensaoStd: 175.0, limiteReparo: 155.0 },
+      SAPATA: { dimensaoStd: 32.0, limiteReparo: 22.0 },
+      ROLETE_INFERIOR: { dimensaoStd: 185.0, limiteReparo: 171.0 },
+      ROLETE_SUPERIOR: { dimensaoStd: 145.0, limiteReparo: 133.0 },
+      RODA_GUIA: { dimensaoStd: 555.0, limiteReparo: 525.0 },
+      RODA_MOTRIZ: { dimensaoStd: 225.0, limiteReparo: 210.0 },
+    }
+
+    return valoresPadrao
   })
 }

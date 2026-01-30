@@ -14,38 +14,83 @@ import {
   ArrowLeft,
   Loader2,
   X,
-  Plus,
-  Trash2,
   Camera,
-  FileText,
   Send,
   CheckCircle,
-  Sparkles,
   Save,
   Building2,
   MapPin,
   User,
+  Gauge,
+  Ruler,
+  AlertTriangle,
+  AlertCircle,
+  Check,
+  Trash2,
 } from 'lucide-react'
 
-interface ComponenteForm {
-  id?: string
-  nome: string
-  condicao: 'BOM' | 'REGULAR' | 'CRITICO'
+// Tipos de componentes rodantes
+const TIPOS_COMPONENTES = [
+  { tipo: 'ESTEIRA', label: 'Esteira' },
+  { tipo: 'SAPATA', label: 'Sapata' },
+  { tipo: 'ROLETE_INFERIOR', label: 'Rolete Inferior' },
+  { tipo: 'ROLETE_SUPERIOR', label: 'Rolete Superior' },
+  { tipo: 'RODA_GUIA', label: 'Roda Guia' },
+  { tipo: 'RODA_MOTRIZ', label: 'Roda Motriz' },
+] as const
+
+type TipoComponente = typeof TIPOS_COMPONENTES[number]['tipo']
+
+interface MedicaoForm {
+  tipo: TipoComponente
+  dimensaoStd: number | null
+  limiteReparo: number | null
+  medicaoLE: number | null
+  medicaoLD: number | null
+  desgasteLE: number | null
+  desgasteLD: number | null
+  statusLE: string | null
+  statusLD: string | null
   observacao: string
+}
+
+interface FotoForm {
+  tipo: TipoComponente
+  lado: 'LE' | 'LD' | 'AMBOS'
+  url: string
+  legenda: string
 }
 
 interface Laudo {
   id: string
   equipamento: string
   numeroSerie: string
+  frota: string | null
+  horimetroTotal: number | null
+  horimetroEsteira: number | null
+  condicaoSolo: string | null
   dataInspecao: string
-  fotos: string[]
+  sumario: string | null
   status: 'RASCUNHO' | 'ENVIADO'
-  componentes: {
+  medicoesRodante: {
     id: string
-    nome: string
-    condicao: 'BOM' | 'REGULAR' | 'CRITICO'
+    tipo: TipoComponente
+    dimensaoStd: string | null
+    limiteReparo: string | null
+    medicaoLE: string | null
+    medicaoLD: string | null
+    desgasteLE: string | null
+    desgasteLD: string | null
+    statusLE: string | null
+    statusLD: string | null
     observacao: string | null
+  }[]
+  fotosComponentes: {
+    id: string
+    tipo: TipoComponente
+    lado: string
+    url: string
+    legenda: string | null
   }[]
 }
 
@@ -71,10 +116,55 @@ interface VisitaTecnica {
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL
 
-const CONDICAO_CONFIG = {
-  BOM: { label: 'Bom', color: 'bg-green-500/20 text-green-600 border-green-500/30' },
-  REGULAR: { label: 'Regular', color: 'bg-yellow-500/20 text-yellow-600 border-yellow-500/30' },
-  CRITICO: { label: 'Crítico', color: 'bg-red-500/20 text-red-600 border-red-500/30' },
+// Valores padrão para cada tipo de componente
+const VALORES_PADRAO: Record<TipoComponente, { dimensaoStd: number; limiteReparo: number }> = {
+  ESTEIRA: { dimensaoStd: 175.0, limiteReparo: 155.0 },
+  SAPATA: { dimensaoStd: 32.0, limiteReparo: 22.0 },
+  ROLETE_INFERIOR: { dimensaoStd: 185.0, limiteReparo: 171.0 },
+  ROLETE_SUPERIOR: { dimensaoStd: 145.0, limiteReparo: 133.0 },
+  RODA_GUIA: { dimensaoStd: 555.0, limiteReparo: 525.0 },
+  RODA_MOTRIZ: { dimensaoStd: 225.0, limiteReparo: 210.0 },
+}
+
+const STATUS_CONFIG = {
+  DENTRO_PARAMETROS: { label: 'Dentro dos parâmetros', color: 'bg-green-500/20 text-green-600 border-green-500/30', icon: Check },
+  VERIFICAR: { label: 'Verificar', color: 'bg-yellow-500/20 text-yellow-600 border-yellow-500/30', icon: AlertTriangle },
+  FORA_PARAMETROS: { label: 'Fora dos parâmetros', color: 'bg-red-500/20 text-red-600 border-red-500/30', icon: AlertCircle },
+}
+
+const CONDICAO_SOLO_OPTIONS = [
+  { value: 'BAIXO_IMPACTO', label: 'Baixo Impacto' },
+  { value: 'MEDIO_IMPACTO', label: 'Médio Impacto' },
+  { value: 'ALTO_IMPACTO', label: 'Alto Impacto' },
+]
+
+// Calcular percentual de desgaste
+function calcularDesgaste(dimensaoStd: number | null, limiteReparo: number | null, medicao: number | null): { desgaste: number | null; status: string | null } {
+  if (!dimensaoStd || !limiteReparo || !medicao) {
+    return { desgaste: null, status: null }
+  }
+
+  const faixaTotal = dimensaoStd - limiteReparo
+  if (faixaTotal <= 0) {
+    return { desgaste: null, status: null }
+  }
+
+  const desgasteAtual = dimensaoStd - medicao
+  const percentual = (desgasteAtual / faixaTotal) * 100
+
+  let status: string
+  if (percentual <= 70) {
+    status = 'DENTRO_PARAMETROS'
+  } else if (percentual <= 90) {
+    status = 'VERIFICAR'
+  } else {
+    status = 'FORA_PARAMETROS'
+  }
+
+  return {
+    desgaste: Math.round(percentual * 100) / 100,
+    status,
+  }
 }
 
 export default function EditarLaudoPage() {
@@ -106,13 +196,24 @@ function EditarLaudoContent() {
   const [laudoForm, setLaudoForm] = useState({
     equipamento: '',
     numeroSerie: '',
+    frota: '',
+    horimetroTotal: '' as string | number,
+    horimetroEsteira: '' as string | number,
+    condicaoSolo: '' as string,
     dataInspecao: new Date().toISOString().split('T')[0],
+    sumario: '',
   })
-  const [componentes, setComponentes] = useState<ComponenteForm[]>([])
-  const [fotos, setFotos] = useState<string[]>([])
+
+  // Medições
+  const [medicoes, setMedicoes] = useState<MedicaoForm[]>([])
+
+  // Fotos
+  const [fotos, setFotos] = useState<FotoForm[]>([])
   const [uploadingFoto, setUploadingFoto] = useState(false)
+  const [fotoTipoSelecionado, setFotoTipoSelecionado] = useState<TipoComponente>('ESTEIRA')
+  const [fotoLadoSelecionado, setFotoLadoSelecionado] = useState<'LE' | 'LD' | 'AMBOS'>('AMBOS')
+
   const [laudoId, setLaudoId] = useState<string | null>(null)
-  const [corrigindoTexto, setCorrigindoTexto] = useState<number | null>(null)
 
   const fotoInputRef = useRef<HTMLInputElement>(null)
 
@@ -137,24 +238,60 @@ function EditarLaudoContent() {
         setLaudoForm({
           equipamento: laudo.equipamento,
           numeroSerie: laudo.numeroSerie,
+          frota: laudo.frota || '',
+          horimetroTotal: laudo.horimetroTotal || '',
+          horimetroEsteira: laudo.horimetroEsteira || '',
+          condicaoSolo: laudo.condicaoSolo || '',
           dataInspecao: laudo.dataInspecao.split('T')[0],
+          sumario: laudo.sumario || '',
         })
-        setComponentes(
-          laudo.componentes.map((c) => ({
-            id: c.id,
-            nome: c.nome,
-            condicao: c.condicao,
-            observacao: c.observacao || '',
-          }))
-        )
-        setFotos(laudo.fotos || [])
+
+        // Carregar medições
+        if (laudo.medicoesRodante && laudo.medicoesRodante.length > 0) {
+          setMedicoes(
+            laudo.medicoesRodante.map((m) => ({
+              tipo: m.tipo,
+              dimensaoStd: m.dimensaoStd ? parseFloat(m.dimensaoStd) : null,
+              limiteReparo: m.limiteReparo ? parseFloat(m.limiteReparo) : null,
+              medicaoLE: m.medicaoLE ? parseFloat(m.medicaoLE) : null,
+              medicaoLD: m.medicaoLD ? parseFloat(m.medicaoLD) : null,
+              desgasteLE: m.desgasteLE ? parseFloat(m.desgasteLE) : null,
+              desgasteLD: m.desgasteLD ? parseFloat(m.desgasteLD) : null,
+              statusLE: m.statusLE,
+              statusLD: m.statusLD,
+              observacao: m.observacao || '',
+            }))
+          )
+        } else {
+          // Inicializar medições com valores padrão
+          inicializarMedicoes()
+        }
+
+        // Carregar fotos
+        if (laudo.fotosComponentes) {
+          setFotos(
+            laudo.fotosComponentes.map((f) => ({
+              tipo: f.tipo,
+              lado: f.lado as 'LE' | 'LD' | 'AMBOS',
+              url: f.url,
+              legenda: f.legenda || '',
+            }))
+          )
+        }
       } else {
         // Preencher com dados da visita
         setLaudoForm({
           equipamento: data.equipamentos[0] || '',
           numeroSerie: '',
+          frota: '',
+          horimetroTotal: '',
+          horimetroEsteira: '',
+          condicaoSolo: '',
           dataInspecao: data.dataVisita?.split('T')[0] || new Date().toISOString().split('T')[0],
+          sumario: '',
         })
+        // Inicializar medições
+        inicializarMedicoes()
       }
     } catch (err: any) {
       setError(err.message)
@@ -163,66 +300,67 @@ function EditarLaudoContent() {
     }
   }
 
-  const addComponente = () => {
-    setComponentes([
-      ...componentes,
-      { nome: '', condicao: 'BOM', observacao: '' },
-    ])
+  const inicializarMedicoes = () => {
+    const medicoesIniciais: MedicaoForm[] = TIPOS_COMPONENTES.map(({ tipo }) => ({
+      tipo,
+      dimensaoStd: VALORES_PADRAO[tipo].dimensaoStd,
+      limiteReparo: VALORES_PADRAO[tipo].limiteReparo,
+      medicaoLE: null,
+      medicaoLD: null,
+      desgasteLE: null,
+      desgasteLD: null,
+      statusLE: null,
+      statusLD: null,
+      observacao: '',
+    }))
+    setMedicoes(medicoesIniciais)
   }
 
-  const removeComponente = (index: number) => {
-    setComponentes(componentes.filter((_, i) => i !== index))
-  }
+  const updateMedicao = (tipo: TipoComponente, field: keyof MedicaoForm, value: any) => {
+    setMedicoes(prev => {
+      const updated = prev.map(m => {
+        if (m.tipo !== tipo) return m
 
-  const updateComponente = (index: number, field: keyof ComponenteForm, value: string) => {
-    const updated = [...componentes]
-    updated[index] = { ...updated[index]!, [field]: value }
-    setComponentes(updated)
-  }
+        const newMedicao = { ...m, [field]: value }
 
-  const corrigirTextoIA = async (index: number) => {
-    const comp = componentes[index]
-    if (!comp?.observacao) return
-
-    setCorrigindoTexto(index)
-    try {
-      const res = await fetch(`${API_URL}/laudos-inspecao/corrigir-texto`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ texto: comp.observacao }),
-      })
-
-      if (res.ok) {
-        const data = await res.json()
-        if (data.corrigido) {
-          updateComponente(index, 'observacao', data.textoCorrigido)
+        // Recalcular desgaste se mudar medição
+        if (field === 'medicaoLE' || field === 'dimensaoStd' || field === 'limiteReparo') {
+          const calcLE = calcularDesgaste(
+            field === 'dimensaoStd' ? value : newMedicao.dimensaoStd,
+            field === 'limiteReparo' ? value : newMedicao.limiteReparo,
+            field === 'medicaoLE' ? value : newMedicao.medicaoLE
+          )
+          newMedicao.desgasteLE = calcLE.desgaste
+          newMedicao.statusLE = calcLE.status
         }
-      }
-    } catch (err) {
-      console.error('Erro ao corrigir texto:', err)
-    } finally {
-      setCorrigindoTexto(null)
-    }
+
+        if (field === 'medicaoLD' || field === 'dimensaoStd' || field === 'limiteReparo') {
+          const calcLD = calcularDesgaste(
+            field === 'dimensaoStd' ? value : newMedicao.dimensaoStd,
+            field === 'limiteReparo' ? value : newMedicao.limiteReparo,
+            field === 'medicaoLD' ? value : newMedicao.medicaoLD
+          )
+          newMedicao.desgasteLD = calcLD.desgaste
+          newMedicao.statusLD = calcLD.status
+        }
+
+        return newMedicao
+      })
+      return updated
+    })
   }
 
   const handleFotoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0]
     if (!file) return
 
-    if (fotos.length >= 5) {
-      setError('Máximo de 5 fotos permitidas')
-      return
-    }
-
     setUploadingFoto(true)
     try {
-      // Converter arquivo para base64
       const reader = new FileReader()
       reader.onload = async () => {
         try {
           const base64 = reader.result as string
 
-          // Usar a API do backend para upload (mesma abordagem das despesas)
           const res = await fetch(`${API_URL}/despesas/upload`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
@@ -232,7 +370,12 @@ function EditarLaudoContent() {
           if (!res.ok) throw new Error('Erro ao fazer upload da foto')
 
           const data = await res.json()
-          setFotos([...fotos, data.url])
+          setFotos([...fotos, {
+            tipo: fotoTipoSelecionado,
+            lado: fotoLadoSelecionado,
+            url: data.url,
+            legenda: '',
+          }])
         } catch (err: any) {
           setError(err.message)
         } finally {
@@ -257,6 +400,12 @@ function EditarLaudoContent() {
     setFotos(fotos.filter((_, i) => i !== index))
   }
 
+  const updateFotoLegenda = (index: number, legenda: string) => {
+    const updated = [...fotos]
+    updated[index] = { ...updated[index]!, legenda }
+    setFotos(updated)
+  }
+
   const salvarLaudo = async () => {
     if (!visita || !user?.id) return
 
@@ -265,14 +414,10 @@ function EditarLaudoContent() {
       return
     }
 
-    if (componentes.length === 0) {
-      setError('Adicione pelo menos um componente')
-      return
-    }
-
-    const componentesInvalidos = componentes.some((c) => !c.nome)
-    if (componentesInvalidos) {
-      setError('Preencha o nome de todos os componentes')
+    // Verificar se há pelo menos uma medição preenchida
+    const medicoesPreenchidas = medicoes.filter(m => m.medicaoLE !== null || m.medicaoLD !== null)
+    if (medicoesPreenchidas.length === 0) {
+      setError('Preencha pelo menos uma medição')
       return
     }
 
@@ -284,14 +429,26 @@ function EditarLaudoContent() {
         inspetorId: user.id,
         equipamento: laudoForm.equipamento,
         numeroSerie: laudoForm.numeroSerie,
+        frota: laudoForm.frota || undefined,
+        horimetroTotal: laudoForm.horimetroTotal ? Number(laudoForm.horimetroTotal) : null,
+        horimetroEsteira: laudoForm.horimetroEsteira ? Number(laudoForm.horimetroEsteira) : null,
+        condicaoSolo: laudoForm.condicaoSolo || null,
         dataInspecao: laudoForm.dataInspecao,
-        componentes: componentes.map((c, i) => ({
-          nome: c.nome,
-          condicao: c.condicao,
-          observacao: c.observacao || undefined,
-          ordem: i,
+        sumario: laudoForm.sumario || undefined,
+        medicoes: medicoes.map(m => ({
+          tipo: m.tipo,
+          dimensaoStd: m.dimensaoStd,
+          limiteReparo: m.limiteReparo,
+          medicaoLE: m.medicaoLE,
+          medicaoLD: m.medicaoLD,
+          observacao: m.observacao || undefined,
         })),
-        fotos,
+        fotos: fotos.map(f => ({
+          tipo: f.tipo,
+          lado: f.lado,
+          url: f.url,
+          legenda: f.legenda || undefined,
+        })),
       }
 
       let res
@@ -399,7 +556,7 @@ function EditarLaudoContent() {
           </Button>
           <div>
             <h1 className="text-3xl font-bold tracking-tight">
-              {isEnviado ? 'Visualizar Laudo' : laudoId ? 'Editar Laudo' : 'Novo Laudo'}
+              Inspeção de Desgaste - Material Rodante
             </h1>
             <p className="text-muted-foreground mt-1">
               {visita.numero ? `Visita Nº ${visita.numero}` : 'Laudo de Inspeção Técnica'}
@@ -455,7 +612,7 @@ function EditarLaudoContent() {
         </CardContent>
       </Card>
 
-      {/* Formulário do Laudo */}
+      {/* Dados do Equipamento */}
       <Card className="border-border/50">
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
@@ -464,7 +621,7 @@ function EditarLaudoContent() {
           </CardTitle>
         </CardHeader>
         <CardContent className="space-y-4">
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             <div className="space-y-2">
               <Label htmlFor="equipamento">Equipamento *</Label>
               <Input
@@ -485,123 +642,212 @@ function EditarLaudoContent() {
                 disabled={isEnviado}
               />
             </div>
+            <div className="space-y-2">
+              <Label htmlFor="frota">Código da Frota</Label>
+              <Input
+                id="frota"
+                value={laudoForm.frota}
+                onChange={(e) => setLaudoForm({ ...laudoForm, frota: e.target.value })}
+                placeholder="Ex: EX-001"
+                disabled={isEnviado}
+              />
+            </div>
           </div>
 
-          <div className="space-y-2">
-            <Label htmlFor="dataInspecao">Data da Inspeção</Label>
-            <Input
-              id="dataInspecao"
-              type="date"
-              value={laudoForm.dataInspecao}
-              onChange={(e) => setLaudoForm({ ...laudoForm, dataInspecao: e.target.value })}
-              disabled={isEnviado}
-              className="w-full md:w-auto"
-            />
+          <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+            <div className="space-y-2">
+              <Label htmlFor="horimetroTotal">Horímetro Total</Label>
+              <div className="relative">
+                <Gauge className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+                <Input
+                  id="horimetroTotal"
+                  type="number"
+                  value={laudoForm.horimetroTotal}
+                  onChange={(e) => setLaudoForm({ ...laudoForm, horimetroTotal: e.target.value })}
+                  placeholder="0"
+                  className="pl-10"
+                  disabled={isEnviado}
+                />
+              </div>
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="horimetroEsteira">Horímetro Esteira</Label>
+              <div className="relative">
+                <Gauge className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+                <Input
+                  id="horimetroEsteira"
+                  type="number"
+                  value={laudoForm.horimetroEsteira}
+                  onChange={(e) => setLaudoForm({ ...laudoForm, horimetroEsteira: e.target.value })}
+                  placeholder="0"
+                  className="pl-10"
+                  disabled={isEnviado}
+                />
+              </div>
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="condicaoSolo">Condição do Solo</Label>
+              <select
+                id="condicaoSolo"
+                value={laudoForm.condicaoSolo}
+                onChange={(e) => setLaudoForm({ ...laudoForm, condicaoSolo: e.target.value })}
+                disabled={isEnviado}
+                className="w-full h-10 px-3 rounded-md border border-input bg-background text-sm"
+              >
+                <option value="">Selecione...</option>
+                {CONDICAO_SOLO_OPTIONS.map(opt => (
+                  <option key={opt.value} value={opt.value}>{opt.label}</option>
+                ))}
+              </select>
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="dataInspecao">Data da Inspeção</Label>
+              <Input
+                id="dataInspecao"
+                type="date"
+                value={laudoForm.dataInspecao}
+                onChange={(e) => setLaudoForm({ ...laudoForm, dataInspecao: e.target.value })}
+                disabled={isEnviado}
+              />
+            </div>
           </div>
         </CardContent>
       </Card>
 
-      {/* Componentes */}
+      {/* Tabela de Medições */}
       <Card className="border-border/50">
         <CardHeader>
-          <div className="flex items-center justify-between">
-            <CardTitle>Componentes Avaliados *</CardTitle>
-            {!isEnviado && (
-              <Button size="sm" variant="outline" onClick={addComponente}>
-                <Plus className="w-4 h-4 mr-1" />
-                Adicionar Componente
-              </Button>
-            )}
-          </div>
+          <CardTitle className="flex items-center gap-2">
+            <Ruler className="w-5 h-5" />
+            Medições de Componentes (mm)
+          </CardTitle>
         </CardHeader>
         <CardContent>
-          {componentes.length === 0 ? (
-            <div className="p-8 rounded-lg bg-muted/50 text-center text-muted-foreground">
-              <ClipboardCheck className="w-12 h-12 mx-auto mb-3 opacity-50" />
-              <p>Nenhum componente adicionado</p>
-              <p className="text-sm mt-1">Clique em "Adicionar Componente" para avaliar</p>
-            </div>
-          ) : (
-            <div className="space-y-4">
-              {componentes.map((comp, index) => (
-                <div
-                  key={index}
-                  className="p-4 rounded-lg border border-border bg-muted/20 space-y-3"
-                >
-                  <div className="flex items-center gap-3">
-                    <span className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center text-sm font-medium">
-                      {index + 1}
-                    </span>
-                    <div className="flex-1">
-                      <Input
-                        placeholder="Nome do componente (ex: Motor, Sistema Hidráulico)"
-                        value={comp.nome}
-                        onChange={(e) => updateComponente(index, 'nome', e.target.value)}
-                        disabled={isEnviado}
-                      />
-                    </div>
-                    <select
-                      value={comp.condicao}
-                      onChange={(e) => updateComponente(index, 'condicao', e.target.value as any)}
-                      disabled={isEnviado}
-                      className={`h-10 px-3 rounded-md border text-sm font-medium ${CONDICAO_CONFIG[comp.condicao].color}`}
-                    >
-                      <option value="BOM">Bom</option>
-                      <option value="REGULAR">Regular</option>
-                      <option value="CRITICO">Crítico</option>
-                    </select>
-                    {!isEnviado && (
-                      <Button
-                        size="sm"
-                        variant="ghost"
-                        className="text-destructive hover:text-destructive"
-                        onClick={() => removeComponente(index)}
-                      >
-                        <Trash2 className="w-4 h-4" />
-                      </Button>
-                    )}
-                  </div>
+          <div className="overflow-x-auto">
+            <table className="w-full border-collapse">
+              <thead>
+                <tr className="bg-muted/50">
+                  <th className="border border-border px-3 py-2 text-left font-medium">Componente</th>
+                  <th className="border border-border px-3 py-2 text-center font-medium">Dimensão Std</th>
+                  <th className="border border-border px-3 py-2 text-center font-medium">Limite Reparo</th>
+                  <th className="border border-border px-3 py-2 text-center font-medium" colSpan={2}>Medição LE</th>
+                  <th className="border border-border px-3 py-2 text-center font-medium" colSpan={2}>Medição LD</th>
+                  <th className="border border-border px-3 py-2 text-center font-medium">% Desg. LE</th>
+                  <th className="border border-border px-3 py-2 text-center font-medium">% Desg. LD</th>
+                </tr>
+              </thead>
+              <tbody>
+                {medicoes.map((med) => {
+                  const tipoInfo = TIPOS_COMPONENTES.find(t => t.tipo === med.tipo)
+                  const statusLEConfig = med.statusLE ? STATUS_CONFIG[med.statusLE as keyof typeof STATUS_CONFIG] : null
+                  const statusLDConfig = med.statusLD ? STATUS_CONFIG[med.statusLD as keyof typeof STATUS_CONFIG] : null
 
-                  <div className="flex gap-2 ml-11">
-                    <Textarea
-                      placeholder="Observação técnica..."
-                      value={comp.observacao}
-                      onChange={(e) => updateComponente(index, 'observacao', e.target.value)}
-                      rows={2}
-                      className="flex-1"
-                      disabled={isEnviado}
-                    />
-                    {!isEnviado && comp.observacao && (
-                      <Button
-                        size="sm"
-                        variant="outline"
-                        onClick={() => corrigirTextoIA(index)}
-                        disabled={corrigindoTexto === index}
-                        className="h-auto"
-                        title="Corrigir texto com IA"
-                      >
-                        {corrigindoTexto === index ? (
-                          <Loader2 className="w-4 h-4 animate-spin" />
-                        ) : (
-                          <Sparkles className="w-4 h-4" />
-                        )}
-                      </Button>
-                    )}
-                  </div>
-                </div>
-              ))}
+                  return (
+                    <tr key={med.tipo}>
+                      <td className="border border-border px-3 py-2 font-medium">
+                        {tipoInfo?.label}
+                      </td>
+                      <td className="border border-border px-2 py-1">
+                        <Input
+                          type="number"
+                          step="0.01"
+                          value={med.dimensaoStd ?? ''}
+                          onChange={(e) => updateMedicao(med.tipo, 'dimensaoStd', e.target.value ? parseFloat(e.target.value) : null)}
+                          className="h-8 text-center"
+                          disabled={isEnviado}
+                        />
+                      </td>
+                      <td className="border border-border px-2 py-1">
+                        <Input
+                          type="number"
+                          step="0.01"
+                          value={med.limiteReparo ?? ''}
+                          onChange={(e) => updateMedicao(med.tipo, 'limiteReparo', e.target.value ? parseFloat(e.target.value) : null)}
+                          className="h-8 text-center"
+                          disabled={isEnviado}
+                        />
+                      </td>
+                      <td className="border border-border px-2 py-1" colSpan={2}>
+                        <Input
+                          type="number"
+                          step="0.01"
+                          value={med.medicaoLE ?? ''}
+                          onChange={(e) => updateMedicao(med.tipo, 'medicaoLE', e.target.value ? parseFloat(e.target.value) : null)}
+                          className="h-8 text-center"
+                          placeholder="Medição"
+                          disabled={isEnviado}
+                        />
+                      </td>
+                      <td className="border border-border px-2 py-1" colSpan={2}>
+                        <Input
+                          type="number"
+                          step="0.01"
+                          value={med.medicaoLD ?? ''}
+                          onChange={(e) => updateMedicao(med.tipo, 'medicaoLD', e.target.value ? parseFloat(e.target.value) : null)}
+                          className="h-8 text-center"
+                          placeholder="Medição"
+                          disabled={isEnviado}
+                        />
+                      </td>
+                      <td className={`border border-border px-2 py-1 text-center ${statusLEConfig ? statusLEConfig.color : ''}`}>
+                        {med.desgasteLE !== null ? `${med.desgasteLE}%` : '-'}
+                      </td>
+                      <td className={`border border-border px-2 py-1 text-center ${statusLDConfig ? statusLDConfig.color : ''}`}>
+                        {med.desgasteLD !== null ? `${med.desgasteLD}%` : '-'}
+                      </td>
+                    </tr>
+                  )
+                })}
+              </tbody>
+            </table>
+          </div>
+
+          {/* Legenda */}
+          <div className="flex flex-wrap gap-4 mt-4 text-sm">
+            <div className="flex items-center gap-2">
+              <div className="w-4 h-4 rounded bg-green-500/20 border border-green-500/30" />
+              <span>Dentro dos parâmetros (≤70%)</span>
             </div>
-          )}
+            <div className="flex items-center gap-2">
+              <div className="w-4 h-4 rounded bg-yellow-500/20 border border-yellow-500/30" />
+              <span>Verificar (70-90%)</span>
+            </div>
+            <div className="flex items-center gap-2">
+              <div className="w-4 h-4 rounded bg-red-500/20 border border-red-500/30" />
+              <span>Fora dos parâmetros (≥90%)</span>
+            </div>
+          </div>
         </CardContent>
       </Card>
 
-      {/* Fotos */}
+      {/* Fotos dos Componentes */}
       <Card className="border-border/50">
         <CardHeader>
           <div className="flex items-center justify-between">
-            <CardTitle>Fotos ({fotos.length}/5)</CardTitle>
-            {!isEnviado && fotos.length < 5 && (
-              <>
+            <CardTitle className="flex items-center gap-2">
+              <Camera className="w-5 h-5" />
+              Fotos dos Componentes
+            </CardTitle>
+            {!isEnviado && (
+              <div className="flex items-center gap-2">
+                <select
+                  value={fotoTipoSelecionado}
+                  onChange={(e) => setFotoTipoSelecionado(e.target.value as TipoComponente)}
+                  className="h-9 px-3 rounded-md border border-input bg-background text-sm"
+                >
+                  {TIPOS_COMPONENTES.map(t => (
+                    <option key={t.tipo} value={t.tipo}>{t.label}</option>
+                  ))}
+                </select>
+                <select
+                  value={fotoLadoSelecionado}
+                  onChange={(e) => setFotoLadoSelecionado(e.target.value as 'LE' | 'LD' | 'AMBOS')}
+                  className="h-9 px-3 rounded-md border border-input bg-background text-sm"
+                >
+                  <option value="LE">Lado Esquerdo</option>
+                  <option value="LD">Lado Direito</option>
+                  <option value="AMBOS">Geral</option>
+                </select>
                 <input
                   ref={fotoInputRef}
                   type="file"
@@ -622,7 +868,7 @@ function EditarLaudoContent() {
                   )}
                   Adicionar Foto
                 </Button>
-              </>
+              </div>
             )}
           </div>
         </CardHeader>
@@ -631,29 +877,64 @@ function EditarLaudoContent() {
             <div className="p-8 rounded-lg bg-muted/50 text-center text-muted-foreground">
               <Camera className="w-12 h-12 mx-auto mb-3 opacity-50" />
               <p>Nenhuma foto adicionada</p>
-              <p className="text-sm mt-1">Adicione fotos do equipamento inspecionado</p>
+              <p className="text-sm mt-1">Adicione fotos dos componentes inspecionados</p>
             </div>
           ) : (
-            <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
-              {fotos.map((foto, index) => (
-                <div key={index} className="relative group">
-                  <img
-                    src={foto}
-                    alt={`Foto ${index + 1}`}
-                    className="w-full h-32 object-cover rounded-lg border border-border"
-                  />
-                  {!isEnviado && (
-                    <button
-                      onClick={() => removeFoto(index)}
-                      className="absolute -top-2 -right-2 w-6 h-6 rounded-full bg-destructive text-destructive-foreground flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"
-                    >
-                      <X className="w-4 h-4" />
-                    </button>
-                  )}
-                </div>
-              ))}
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+              {fotos.map((foto, index) => {
+                const tipoLabel = TIPOS_COMPONENTES.find(t => t.tipo === foto.tipo)?.label
+                const ladoLabel = foto.lado === 'LE' ? 'Lado Esquerdo' : foto.lado === 'LD' ? 'Lado Direito' : 'Geral'
+
+                return (
+                  <div key={index} className="relative border border-border rounded-lg overflow-hidden">
+                    <img
+                      src={foto.url}
+                      alt={`${tipoLabel} - ${ladoLabel}`}
+                      className="w-full h-48 object-cover"
+                    />
+                    <div className="p-2 bg-muted/50">
+                      <div className="flex items-center justify-between mb-1">
+                        <Badge variant="outline" className="text-xs">
+                          {tipoLabel} - {ladoLabel}
+                        </Badge>
+                        {!isEnviado && (
+                          <button
+                            onClick={() => removeFoto(index)}
+                            className="p-1 rounded hover:bg-destructive/20 text-destructive"
+                          >
+                            <Trash2 className="w-4 h-4" />
+                          </button>
+                        )}
+                      </div>
+                      <Input
+                        placeholder="Legenda da foto..."
+                        value={foto.legenda}
+                        onChange={(e) => updateFotoLegenda(index, e.target.value)}
+                        className="h-8 text-xs"
+                        disabled={isEnviado}
+                      />
+                    </div>
+                  </div>
+                )
+              })}
             </div>
           )}
+        </CardContent>
+      </Card>
+
+      {/* Sumário / Observações */}
+      <Card className="border-border/50">
+        <CardHeader>
+          <CardTitle>Sumário Técnico / Observações</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <Textarea
+            placeholder="Escreva um resumo técnico da inspeção, recomendações de manutenção, etc..."
+            value={laudoForm.sumario}
+            onChange={(e) => setLaudoForm({ ...laudoForm, sumario: e.target.value })}
+            rows={4}
+            disabled={isEnviado}
+          />
         </CardContent>
       </Card>
 
@@ -676,11 +957,11 @@ function EditarLaudoContent() {
             ) : (
               <Save className="w-4 h-4 mr-2" />
             )}
-            Salvar
+            Salvar Rascunho
           </Button>
           <Button
             onClick={finalizarLaudo}
-            disabled={enviando || componentes.length === 0}
+            disabled={enviando || medicoes.filter(m => m.medicaoLE !== null || m.medicaoLD !== null).length === 0}
           >
             {enviando ? (
               <Loader2 className="w-4 h-4 mr-2 animate-spin" />

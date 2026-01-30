@@ -274,7 +274,10 @@ export async function visitasTecnicasRoutes(app: FastifyInstance) {
         },
         laudoInspecao: {
           include: {
-            componentes: {
+            medicoesRodante: {
+              orderBy: { ordem: 'asc' }
+            },
+            fotosComponentes: {
               orderBy: { ordem: 'asc' }
             }
           }

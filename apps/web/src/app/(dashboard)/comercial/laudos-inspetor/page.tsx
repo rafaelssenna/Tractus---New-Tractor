@@ -21,21 +21,46 @@ import {
   Eye,
   Calendar,
   FileText,
+  AlertTriangle,
+  AlertCircle,
+  Check,
 } from 'lucide-react'
+
+// Tipos de componentes rodantes
+const TIPO_LABELS: Record<string, string> = {
+  ESTEIRA: 'Esteira',
+  SAPATA: 'Sapata',
+  ROLETE_INFERIOR: 'Rolete Inferior',
+  ROLETE_SUPERIOR: 'Rolete Superior',
+  RODA_GUIA: 'Roda Guia',
+  RODA_MOTRIZ: 'Roda Motriz',
+}
+
+const STATUS_CONFIG = {
+  DENTRO_PARAMETROS: { label: 'OK', color: 'bg-green-500/20 text-green-600 border-green-500/30', icon: Check },
+  VERIFICAR: { label: 'Verificar', color: 'bg-yellow-500/20 text-yellow-600 border-yellow-500/30', icon: AlertTriangle },
+  FORA_PARAMETROS: { label: 'Fora', color: 'bg-red-500/20 text-red-600 border-red-500/30', icon: AlertCircle },
+}
+
+interface Medicao {
+  id: string
+  tipo: string
+  desgasteLE: string | null
+  desgasteLD: string | null
+  statusLE: string | null
+  statusLD: string | null
+}
 
 interface Laudo {
   id: string
   numero: string
   equipamento: string
   numeroSerie: string
+  frota: string | null
   dataInspecao: string
   status: 'RASCUNHO' | 'ENVIADO'
   dataEnvio: string | null
-  componentes: {
-    id: string
-    nome: string
-    condicao: 'BOM' | 'REGULAR' | 'CRITICO'
-  }[]
+  medicoes: Medicao[]
   visitaTecnica: {
     id: string
     cliente: {
@@ -47,12 +72,6 @@ interface Laudo {
 }
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL
-
-const CONDICAO_CONFIG = {
-  BOM: { label: 'Bom', color: 'bg-green-500/20 text-green-600 border-green-500/30' },
-  REGULAR: { label: 'Regular', color: 'bg-yellow-500/20 text-yellow-600 border-yellow-500/30' },
-  CRITICO: { label: 'Crítico', color: 'bg-red-500/20 text-red-600 border-red-500/30' },
-}
 
 export default function LaudosInspetorPage() {
   const router = useRouter()
@@ -135,98 +154,159 @@ export default function LaudosInspetorPage() {
         <!DOCTYPE html>
         <html>
         <head>
-          <title>Laudo de Inspeção - ${data.numero}</title>
+          <title>Inspeção de Desgaste - ${data.numero}</title>
           <style>
             * { margin: 0; padding: 0; box-sizing: border-box; }
-            body { font-family: Arial, sans-serif; padding: 20px; color: #333; }
+            body { font-family: Arial, sans-serif; padding: 20px; color: #333; font-size: 11px; }
             .header { display: flex; align-items: center; justify-content: space-between; border-bottom: 2px solid #000; padding-bottom: 15px; margin-bottom: 20px; }
             .logo { height: 50px; width: auto; }
             .title { text-align: center; flex: 1; }
-            .title h1 { font-size: 20px; margin-bottom: 5px; }
-            .title p { font-size: 12px; color: #666; }
-            .info-section { margin-bottom: 20px; }
-            .info-section h2 { font-size: 14px; background: #f0f0f0; padding: 8px; margin-bottom: 10px; }
-            .info-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; padding: 0 10px; }
-            .info-item { font-size: 12px; }
-            .info-item strong { display: block; color: #666; font-size: 10px; text-transform: uppercase; }
-            .components-table { width: 100%; border-collapse: collapse; margin-bottom: 20px; }
-            .components-table th, .components-table td { border: 1px solid #ddd; padding: 8px; text-align: left; font-size: 12px; }
-            .components-table th { background: #f0f0f0; }
-            .condicao-bom { color: #22c55e; font-weight: bold; }
-            .condicao-regular { color: #eab308; font-weight: bold; }
-            .condicao-critico { color: #ef4444; font-weight: bold; }
-            .photos { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin-top: 20px; }
-            .photos img { width: 100%; height: 150px; object-fit: cover; border: 1px solid #ddd; }
-            .footer { margin-top: 40px; padding-top: 20px; border-top: 1px solid #ddd; font-size: 10px; color: #666; text-align: center; }
-            @media print { body { padding: 0; } }
+            .title h1 { font-size: 16px; margin-bottom: 5px; text-transform: uppercase; }
+            .title p { font-size: 11px; color: #666; }
+            .info-section { margin-bottom: 15px; }
+            .info-section h2 { font-size: 12px; background: #1e3a5f; color: white; padding: 6px 10px; margin-bottom: 8px; text-transform: uppercase; }
+            .info-grid { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 8px; padding: 0 10px; }
+            .info-item { font-size: 11px; }
+            .info-item strong { display: block; color: #666; font-size: 9px; text-transform: uppercase; margin-bottom: 2px; }
+            .measurements-table { width: 100%; border-collapse: collapse; margin-bottom: 15px; }
+            .measurements-table th, .measurements-table td { border: 1px solid #000; padding: 6px 4px; text-align: center; font-size: 10px; }
+            .measurements-table th { background: #1e3a5f; color: white; font-weight: bold; }
+            .measurements-table td:first-child { text-align: left; font-weight: bold; padding-left: 8px; }
+            .status-ok { background: #d4edda; color: #155724; }
+            .status-verificar { background: #fff3cd; color: #856404; }
+            .status-fora { background: #f8d7da; color: #721c24; }
+            .photos-section { page-break-before: always; }
+            .photos { display: grid; grid-template-columns: repeat(2, 1fr); gap: 15px; margin-top: 15px; }
+            .photo-item { border: 1px solid #ddd; padding: 8px; }
+            .photo-item img { width: 100%; height: 200px; object-fit: cover; }
+            .photo-item .label { background: #1e3a5f; color: white; padding: 4px 8px; font-size: 10px; margin-top: 8px; text-align: center; }
+            .summary-section { margin-top: 20px; padding: 15px; border: 1px solid #ddd; background: #f9f9f9; }
+            .summary-section h3 { font-size: 12px; margin-bottom: 10px; color: #1e3a5f; }
+            .summary-section p { font-size: 11px; line-height: 1.5; white-space: pre-wrap; }
+            .footer { margin-top: 30px; padding-top: 15px; border-top: 1px solid #ddd; font-size: 9px; color: #666; text-align: center; }
+            .legend { margin-top: 10px; display: flex; gap: 20px; font-size: 9px; }
+            .legend-item { display: flex; align-items: center; gap: 5px; }
+            .legend-color { width: 12px; height: 12px; border: 1px solid #999; }
+            @media print {
+              body { padding: 10px; }
+              .photos-section { page-break-before: always; }
+            }
           </style>
         </head>
         <body>
           <div class="header">
             <img src="/newtractor-logo.png" alt="New Tractor" class="logo" />
             <div class="title">
-              <h1>LAUDO DE INSPEÇÃO TÉCNICA</h1>
-              <p>Nº ${data.numero}</p>
+              <h1>Inspeção de Desgaste de Material Rodante</h1>
+              <p>Laudo Nº ${data.numero}</p>
             </div>
-            <div style="width: 100px; text-align: right; font-size: 12px;">
+            <div style="width: 100px; text-align: right; font-size: 11px;">
               <strong>Data:</strong><br>${data.dataInspecao}
             </div>
           </div>
 
           <div class="info-section">
-            <h2>DADOS DO CLIENTE</h2>
+            <h2>Dados do Cliente</h2>
             <div class="info-grid">
               <div class="info-item"><strong>Cliente</strong>${data.cliente.nome}</div>
-              <div class="info-item"><strong>CNPJ</strong>${data.cliente.cnpj || 'N/A'}</div>
               <div class="info-item"><strong>Cidade/UF</strong>${data.cliente.cidade || ''}${data.cliente.estado ? '/' + data.cliente.estado : ''}</div>
-              <div class="info-item"><strong>Telefone</strong>${data.cliente.telefone || 'N/A'}</div>
-            </div>
-          </div>
-
-          <div class="info-section">
-            <h2>DADOS DO EQUIPAMENTO</h2>
-            <div class="info-grid">
-              <div class="info-item"><strong>Equipamento</strong>${data.equipamento}</div>
-              <div class="info-item"><strong>Nº de Série</strong>${data.numeroSerie}</div>
-              <div class="info-item"><strong>Inspetor</strong>${data.inspetor}</div>
               <div class="info-item"><strong>Representante</strong>${data.vendedor}</div>
             </div>
           </div>
 
           <div class="info-section">
-            <h2>COMPONENTES AVALIADOS</h2>
-            <table class="components-table">
+            <h2>Dados do Equipamento</h2>
+            <div class="info-grid">
+              <div class="info-item"><strong>Equipamento</strong>${data.equipamento}</div>
+              <div class="info-item"><strong>Nº de Série</strong>${data.numeroSerie}</div>
+              <div class="info-item"><strong>Frota</strong>${data.frota || 'N/A'}</div>
+              <div class="info-item"><strong>Horímetro Total</strong>${data.horimetroTotal ? data.horimetroTotal + 'h' : 'N/A'}</div>
+              <div class="info-item"><strong>Horímetro Esteira</strong>${data.horimetroEsteira ? data.horimetroEsteira + 'h' : 'N/A'}</div>
+              <div class="info-item"><strong>Condição do Solo</strong>${data.condicaoSoloLabel || 'N/A'}</div>
+            </div>
+          </div>
+
+          <div class="info-section">
+            <h2>Medições de Componentes (mm)</h2>
+            <table class="measurements-table">
               <thead>
                 <tr>
-                  <th style="width: 25%;">Componente</th>
-                  <th style="width: 15%;">Condição</th>
-                  <th>Observação Técnica</th>
+                  <th style="width: 18%;">Componente</th>
+                  <th style="width: 12%;">Dim. Std</th>
+                  <th style="width: 12%;">Lim. Reparo</th>
+                  <th style="width: 12%;">Medição LE</th>
+                  <th style="width: 12%;">Medição LD</th>
+                  <th style="width: 10%;">% Desg. LE</th>
+                  <th style="width: 10%;">% Desg. LD</th>
+                  <th style="width: 14%;">Status</th>
                 </tr>
               </thead>
               <tbody>
-                ${data.componentes.map((c: any) => `
-                  <tr>
-                    <td>${c.nome}</td>
-                    <td class="condicao-${c.condicao.toLowerCase()}">${c.condicaoLabel}</td>
-                    <td>${c.observacao || '-'}</td>
-                  </tr>
-                `).join('')}
+                ${data.medicoes.map((med: any) => {
+                  const getStatusClass = (status: string | null) => {
+                    if (!status) return ''
+                    if (status === 'DENTRO_PARAMETROS') return 'status-ok'
+                    if (status === 'VERIFICAR') return 'status-verificar'
+                    return 'status-fora'
+                  }
+                  const maxStatus = (le: string | null, ld: string | null) => {
+                    const priority: Record<string, number> = { 'FORA_PARAMETROS': 3, 'VERIFICAR': 2, 'DENTRO_PARAMETROS': 1 }
+                    const pLE = priority[le || ''] || 0
+                    const pLD = priority[ld || ''] || 0
+                    if (pLE >= pLD) return le
+                    return ld
+                  }
+                  const status = maxStatus(med.statusLE, med.statusLD)
+                  const statusLabel = status === 'DENTRO_PARAMETROS' ? 'OK' : status === 'VERIFICAR' ? 'VERIFICAR' : status === 'FORA_PARAMETROS' ? 'FORA' : '-'
+
+                  return `
+                    <tr>
+                      <td>${med.tipoLabel}</td>
+                      <td>${med.dimensaoStd !== null ? med.dimensaoStd.toFixed(2) : '-'}</td>
+                      <td>${med.limiteReparo !== null ? med.limiteReparo.toFixed(2) : '-'}</td>
+                      <td>${med.medicaoLE !== null ? med.medicaoLE.toFixed(2) : '-'}</td>
+                      <td>${med.medicaoLD !== null ? med.medicaoLD.toFixed(2) : '-'}</td>
+                      <td class="${getStatusClass(med.statusLE)}">${med.desgasteLE !== null ? med.desgasteLE.toFixed(1) + '%' : '-'}</td>
+                      <td class="${getStatusClass(med.statusLD)}">${med.desgasteLD !== null ? med.desgasteLD.toFixed(1) + '%' : '-'}</td>
+                      <td class="${getStatusClass(status)}">${statusLabel}</td>
+                    </tr>
+                  `
+                }).join('')}
               </tbody>
             </table>
+            <div class="legend">
+              <div class="legend-item"><div class="legend-color" style="background: #d4edda;"></div> Dentro dos parâmetros (≤70%)</div>
+              <div class="legend-item"><div class="legend-color" style="background: #fff3cd;"></div> Verificar (70-90%)</div>
+              <div class="legend-item"><div class="legend-color" style="background: #f8d7da;"></div> Fora dos parâmetros (≥90%)</div>
+            </div>
           </div>
 
+          ${data.sumario ? `
+            <div class="summary-section">
+              <h3>Sumário Técnico / Observações</h3>
+              <p>${data.sumario}</p>
+            </div>
+          ` : ''}
+
           ${data.fotos && data.fotos.length > 0 ? `
-            <div class="info-section">
-              <h2>REGISTRO FOTOGRÁFICO</h2>
-              <div class="photos">
-                ${data.fotos.map((foto: string) => `<img src="${foto}" alt="Foto do equipamento" />`).join('')}
+            <div class="photos-section">
+              <div class="info-section">
+                <h2>Registro Fotográfico</h2>
+                <div class="photos">
+                  ${data.fotos.map((foto: any) => `
+                    <div class="photo-item">
+                      <img src="${foto.url}" alt="${foto.tipoLabel}" />
+                      <div class="label">${foto.tipoLabel}${foto.ladoLabel ? ' - ' + foto.ladoLabel : ''}${foto.legenda ? ': ' + foto.legenda : ''}</div>
+                    </div>
+                  `).join('')}
+                </div>
               </div>
             </div>
           ` : ''}
 
           <div class="footer">
-            <p>New Tractor - Soluções em Equipamentos Pesados</p>
-            <p>Este documento foi gerado automaticamente pelo sistema Tractus em ${new Date().toLocaleDateString('pt-BR')}</p>
+            <p><strong>New Tractor</strong> - Soluções em Material Rodante para Equipamentos Pesados</p>
+            <p>Inspetor: ${data.inspetor} | Documento gerado pelo sistema Tractus em ${new Date().toLocaleDateString('pt-BR')}</p>
           </div>
         </body>
         </html>
@@ -252,6 +332,17 @@ export default function LaudosInspetorPage() {
   const totalRascunhos = laudos.filter(l => l.status === 'RASCUNHO').length
   const totalEnviados = laudos.filter(l => l.status === 'ENVIADO').length
 
+  // Obter o pior status de um laudo
+  const getWorstStatus = (medicoes: Medicao[]) => {
+    let worst: string | null = null
+    for (const m of medicoes) {
+      if (m.statusLE === 'FORA_PARAMETROS' || m.statusLD === 'FORA_PARAMETROS') return 'FORA_PARAMETROS'
+      if (m.statusLE === 'VERIFICAR' || m.statusLD === 'VERIFICAR') worst = 'VERIFICAR'
+      if (!worst && (m.statusLE === 'DENTRO_PARAMETROS' || m.statusLD === 'DENTRO_PARAMETROS')) worst = 'DENTRO_PARAMETROS'
+    }
+    return worst
+  }
+
   return (
     <div className="space-y-6 p-1">
       {/* Header */}
@@ -268,7 +359,7 @@ export default function LaudosInspetorPage() {
           <div>
             <h1 className="text-3xl font-bold tracking-tight">Meus Laudos</h1>
             <p className="text-muted-foreground mt-1">
-              Histórico de laudos de inspeção
+              Histórico de laudos de inspeção de material rodante
             </p>
           </div>
         </div>
@@ -373,106 +464,126 @@ export default function LaudosInspetorPage() {
         </Card>
       ) : (
         <div className="space-y-3">
-          {filteredLaudos.map((laudo) => (
-            <Card key={laudo.id} className="border-border/50 hover:bg-muted/30 transition-colors">
-              <CardContent className="p-4">
-                <div className="flex items-start justify-between">
-                  <div className="flex-1">
-                    <div className="flex items-center gap-2 mb-2">
-                      {laudo.status === 'ENVIADO' ? (
-                        <Badge className="bg-green-500/20 text-green-600 border-green-500/30">
-                          <CheckCircle className="w-3 h-3 mr-1" />
-                          Finalizado
-                        </Badge>
-                      ) : (
-                        <Badge className="bg-yellow-500/20 text-yellow-600 border-yellow-500/30">
-                          <Edit className="w-3 h-3 mr-1" />
-                          Rascunho
-                        </Badge>
+          {filteredLaudos.map((laudo) => {
+            const worstStatus = getWorstStatus(laudo.medicoes)
+            const statusConfig = worstStatus ? STATUS_CONFIG[worstStatus as keyof typeof STATUS_CONFIG] : null
+
+            return (
+              <Card key={laudo.id} className="border-border/50 hover:bg-muted/30 transition-colors">
+                <CardContent className="p-4">
+                  <div className="flex items-start justify-between">
+                    <div className="flex-1">
+                      <div className="flex items-center gap-2 mb-2">
+                        {laudo.status === 'ENVIADO' ? (
+                          <Badge className="bg-green-500/20 text-green-600 border-green-500/30">
+                            <CheckCircle className="w-3 h-3 mr-1" />
+                            Finalizado
+                          </Badge>
+                        ) : (
+                          <Badge className="bg-yellow-500/20 text-yellow-600 border-yellow-500/30">
+                            <Edit className="w-3 h-3 mr-1" />
+                            Rascunho
+                          </Badge>
+                        )}
+                        {statusConfig && laudo.status === 'ENVIADO' && (
+                          <Badge className={statusConfig.color}>
+                            {worstStatus === 'DENTRO_PARAMETROS' && <Check className="w-3 h-3 mr-1" />}
+                            {worstStatus === 'VERIFICAR' && <AlertTriangle className="w-3 h-3 mr-1" />}
+                            {worstStatus === 'FORA_PARAMETROS' && <AlertCircle className="w-3 h-3 mr-1" />}
+                            {statusConfig.label}
+                          </Badge>
+                        )}
+                        <span className="text-xs text-muted-foreground">
+                          Nº {laudo.numero}
+                        </span>
+                        <span className="text-xs text-muted-foreground">
+                          | {formatDate(laudo.dataInspecao)}
+                        </span>
+                      </div>
+
+                      <div className="flex items-start gap-2 mb-2">
+                        <Building2 className="w-4 h-4 text-muted-foreground mt-0.5" />
+                        <div>
+                          <p className="font-medium">{laudo.visitaTecnica.cliente.nome}</p>
+                          {laudo.visitaTecnica.cliente.cidade && (
+                            <p className="text-sm text-muted-foreground">
+                              {laudo.visitaTecnica.cliente.cidade}{laudo.visitaTecnica.cliente.estado ? `/${laudo.visitaTecnica.cliente.estado}` : ''}
+                            </p>
+                          )}
+                        </div>
+                      </div>
+
+                      <div className="mb-2">
+                        <p className="text-sm">
+                          <span className="text-muted-foreground">Equipamento:</span>{' '}
+                          <span className="font-medium">{laudo.equipamento}</span>
+                          {laudo.numeroSerie && (
+                            <span className="text-muted-foreground"> | Série: {laudo.numeroSerie}</span>
+                          )}
+                          {laudo.frota && (
+                            <span className="text-muted-foreground"> | Frota: {laudo.frota}</span>
+                          )}
+                        </p>
+                      </div>
+
+                      {laudo.medicoes.length > 0 && (
+                        <div className="flex flex-wrap gap-1">
+                          {laudo.medicoes.slice(0, 6).map((med, i) => {
+                            const medStatus = med.statusLE === 'FORA_PARAMETROS' || med.statusLD === 'FORA_PARAMETROS'
+                              ? 'FORA_PARAMETROS'
+                              : med.statusLE === 'VERIFICAR' || med.statusLD === 'VERIFICAR'
+                                ? 'VERIFICAR'
+                                : 'DENTRO_PARAMETROS'
+                            const medConfig = STATUS_CONFIG[medStatus as keyof typeof STATUS_CONFIG]
+
+                            return (
+                              <Badge
+                                key={i}
+                                className={`text-xs ${medConfig?.color || ''}`}
+                              >
+                                {TIPO_LABELS[med.tipo] || med.tipo}
+                              </Badge>
+                            )
+                          })}
+                        </div>
                       )}
-                      <span className="text-xs text-muted-foreground">
-                        Nº {laudo.numero}
-                      </span>
-                      <span className="text-xs text-muted-foreground">
-                        | {formatDate(laudo.dataInspecao)}
-                      </span>
                     </div>
 
-                    <div className="flex items-start gap-2 mb-2">
-                      <Building2 className="w-4 h-4 text-muted-foreground mt-0.5" />
-                      <div>
-                        <p className="font-medium">{laudo.visitaTecnica.cliente.nome}</p>
-                        {laudo.visitaTecnica.cliente.cidade && (
-                          <p className="text-sm text-muted-foreground">
-                            {laudo.visitaTecnica.cliente.cidade}{laudo.visitaTecnica.cliente.estado ? `/${laudo.visitaTecnica.cliente.estado}` : ''}
-                          </p>
-                        )}
-                      </div>
-                    </div>
-
-                    <div className="mb-2">
-                      <p className="text-sm">
-                        <span className="text-muted-foreground">Equipamento:</span>{' '}
-                        <span className="font-medium">{laudo.equipamento}</span>
-                        {laudo.numeroSerie && (
-                          <span className="text-muted-foreground"> | Série: {laudo.numeroSerie}</span>
-                        )}
-                      </p>
-                    </div>
-
-                    {laudo.componentes.length > 0 && (
-                      <div className="flex flex-wrap gap-1">
-                        {laudo.componentes.slice(0, 4).map((comp, i) => (
-                          <Badge
-                            key={i}
-                            className={`text-xs ${CONDICAO_CONFIG[comp.condicao].color}`}
+                    <div className="flex flex-col gap-2 ml-4">
+                      {laudo.status === 'ENVIADO' ? (
+                        <>
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            onClick={() => router.push(`/comercial/laudos-inspetor/editar?visita=${laudo.visitaTecnica.id}`)}
                           >
-                            {comp.nome}
-                          </Badge>
-                        ))}
-                        {laudo.componentes.length > 4 && (
-                          <Badge variant="outline" className="text-xs">
-                            +{laudo.componentes.length - 4}
-                          </Badge>
-                        )}
-                      </div>
-                    )}
-                  </div>
-
-                  <div className="flex flex-col gap-2 ml-4">
-                    {laudo.status === 'ENVIADO' ? (
-                      <>
+                            <Eye className="w-4 h-4 mr-1" />
+                            Visualizar
+                          </Button>
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            onClick={() => gerarPDF(laudo.id)}
+                          >
+                            <Download className="w-4 h-4 mr-1" />
+                            PDF
+                          </Button>
+                        </>
+                      ) : (
                         <Button
                           size="sm"
-                          variant="outline"
                           onClick={() => router.push(`/comercial/laudos-inspetor/editar?visita=${laudo.visitaTecnica.id}`)}
                         >
-                          <Eye className="w-4 h-4 mr-1" />
-                          Visualizar
+                          <Edit className="w-4 h-4 mr-1" />
+                          Continuar
                         </Button>
-                        <Button
-                          size="sm"
-                          variant="outline"
-                          onClick={() => gerarPDF(laudo.id)}
-                        >
-                          <Download className="w-4 h-4 mr-1" />
-                          PDF
-                        </Button>
-                      </>
-                    ) : (
-                      <Button
-                        size="sm"
-                        onClick={() => router.push(`/comercial/laudos-inspetor/editar?visita=${laudo.visitaTecnica.id}`)}
-                      >
-                        <Edit className="w-4 h-4 mr-1" />
-                        Continuar
-                      </Button>
-                    )}
+                      )}
+                    </div>
                   </div>
-                </div>
-              </CardContent>
-            </Card>
-          ))}
+                </CardContent>
+              </Card>
+            )
+          })}
         </div>
       )}
     </div>
