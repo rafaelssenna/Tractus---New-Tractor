@@ -27,6 +27,7 @@ import {
   AlertCircle,
   FileText,
   CalendarPlus,
+  ClipboardCheck,
 } from 'lucide-react'
 
 interface VisitaInspecao {
@@ -445,6 +446,18 @@ export default function AgendaInspetorPage() {
                     Marcar Realizada
                   </>
                 )}
+              </Button>
+            )}
+            {/* Botão do Inspetor: Fazer Laudo - para visitas com data */}
+            {isInspetor && visita.dataVisita && visita.status !== 'CANCELADA' && (
+              <Button
+                size="sm"
+                variant="outline"
+                className="text-primary hover:bg-primary/10"
+                onClick={() => router.push(`/comercial/laudos-inspetor?visita=${visita.id}`)}
+              >
+                <ClipboardCheck className="w-4 h-4 mr-1" />
+                Fazer Laudo
               </Button>
             )}
           </div>
