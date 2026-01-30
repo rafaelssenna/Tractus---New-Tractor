@@ -187,10 +187,10 @@ export default function LaudosInspetorPage() {
             .info-grid { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 8px; padding: 0 10px; }
             .info-item { font-size: 11px; }
             .info-item strong { display: block; color: #666; font-size: 9px; text-transform: uppercase; margin-bottom: 2px; }
-            .measurements-table { width: 100%; border-collapse: collapse; margin-bottom: 15px; }
-            .measurements-table th, .measurements-table td { border: 1px solid #000; padding: 6px 4px; text-align: center; font-size: 10px; }
+            .measurements-table { width: 100%; border-collapse: collapse; margin-bottom: 10px; }
+            .measurements-table th, .measurements-table td { border: 1px solid #000; padding: 4px 3px; text-align: center; font-size: 9px; vertical-align: middle; }
             .measurements-table th { background: #1e3a5f; color: white; font-weight: bold; }
-            .measurements-table td:first-child { text-align: left; font-weight: bold; padding-left: 8px; }
+            .measurements-table td:nth-child(2) { text-align: left; font-weight: bold; padding-left: 6px; }
             .status-ok { background: #d4edda !important; color: #155724 !important; -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
             .status-verificar { background: #fff3cd !important; color: #856404 !important; -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
             .status-fora { background: #f8d7da !important; color: #721c24 !important; -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
@@ -266,6 +266,18 @@ export default function LaudosInspetorPage() {
               ALTURA_FLANGE: 'Altura da flange',
               CONDICAO_VISUAL: 'Condição visual',
             }
+            // Mapeamento de sub-itens para desenhos técnicos
+            const desenhosPorSubitem: Record<string, string> = {
+              PASSO_CORRENTE: '/desenhos/Passo da corrente.jpg',
+              DIAMETRO_BUCHA: '/desenhos/Diâmetro externo da bucha.webp',
+              ALTURA_ELO: '/desenhos/Altura do elo.png',
+              ALTURA_GARRA: '/desenhos/Altura da garra da sapata.jpg',
+              DIAMETRO_PISTA: '/desenhos/Diametro da Pista.png',
+              ALTURA_FLANGE: '/desenhos/Altura da Flange da Roda guia.png',
+              CONDICAO_VISUAL: '/desenhos/Roda Motriz.png',
+            }
+            // Desenho alternativo para rolete superior
+            const desenhoRoleteSuperior = '/desenhos/Diametro da Pista do Rolete.png'
 
             const getStatusClass = (status: string | null) => {
               if (!status) return ''
@@ -300,34 +312,47 @@ export default function LaudosInspetorPage() {
               const hasMultiple = meds.length > 1
               const hasMultipleSubitems = new Set(meds.map((m: any) => m.subitem)).size > 1
 
+              // Função para obter desenho do subitem
+              const getDesenho = (subitem: string, tipoComp: string) => {
+                if (tipoComp === 'ROLETE_SUPERIOR') return desenhoRoleteSuperior
+                return desenhosPorSubitem[subitem] || ''
+              }
+
               return `
                 <div class="info-section">
                   <h2>${tipoLabel}</h2>
                   <table class="measurements-table">
                     <thead>
                       <tr>
+                        <th style="width: 70px;">Desenho</th>
                         ${isVisual ? `
-                          <th style="width: 30%;">Check Item</th>
-                          <th style="width: 35%;">Avaliação LE</th>
-                          <th style="width: 35%;">Avaliação LD</th>
+                          <th>Check Item</th>
+                          <th style="width: 20%;">Avaliação LE</th>
+                          <th style="width: 20%;">Avaliação LD</th>
                         ` : `
-                          ${hasMultiple ? '<th style="width: 6%;">Nº</th>' : ''}
-                          ${hasMultipleSubitems ? '<th style="width: 14%;">Check Item</th>' : ''}
+                          ${hasMultiple ? '<th style="width: 5%;">Nº</th>' : ''}
+                          ${hasMultipleSubitems ? '<th style="width: 16%;">Check Item</th>' : ''}
                           <th style="width: 10%;">Dim. Std</th>
                           <th style="width: 10%;">Lim. Rep</th>
                           <th style="width: 10%;">Med. LE</th>
                           <th style="width: 10%;">Med. LD</th>
                           <th style="width: 9%;">% LE</th>
                           <th style="width: 9%;">% LD</th>
-                          <th style="width: ${hasMultiple || hasMultipleSubitems ? '22%' : '32%'};">NOTA</th>
+                          <th style="width: ${hasMultiple || hasMultipleSubitems ? '11%' : '16%'};">NOTA</th>
                         `}
                       </tr>
                     </thead>
                     <tbody>
-                      ${meds.map((med: any) => {
+                      ${meds.map((med: any, idx: number) => {
+                        const desenhoUrl = getDesenho(med.subitem, tipo)
+                        // Para componentes com múltiplas instâncias do mesmo subitem, só mostra desenho na primeira linha
+                        const showDesenho = hasMultipleSubitems || idx === 0 || meds[idx-1]?.subitem !== med.subitem
+                        const rowspan = hasMultiple && !hasMultipleSubitems ? meds.length : 1
+
                         if (isVisual) {
                           return `
                             <tr>
+                              <td style="padding: 2px;"><img src="${desenhoUrl}" style="width: 65px; height: auto; max-height: 50px; object-fit: contain;" onerror="this.style.display='none'" /></td>
                               <td>${subitemLabels[med.subitem] || med.subitem}</td>
                               <td style="text-align: center; font-weight: bold; ${med.avaliacaoVisualLE === 'BOM' ? 'color: green;' : 'color: orange;'}">${med.avaliacaoVisualLE || '-'}</td>
                               <td style="text-align: center; font-weight: bold; ${med.avaliacaoVisualLD === 'BOM' ? 'color: green;' : 'color: orange;'}">${med.avaliacaoVisualLD || '-'}</td>
@@ -337,10 +362,11 @@ export default function LaudosInspetorPage() {
 
                         const status = maxStatus(med.statusLE, med.statusLD)
                         const notaClass = status === 'FORA_PARAMETROS' ? 'status-fora' : (status === 'VERIFICAR' ? 'status-verificar' : (status ? 'status-ok' : ''))
-                        const notaText = status === 'FORA_PARAMETROS' ? 'FORA DOS PARÂMETROS' : (status === 'VERIFICAR' ? 'VERIFICAR' : (status ? 'DENTRO DOS PARÂMETROS' : '-'))
+                        const notaText = status === 'FORA_PARAMETROS' ? 'FORA' : (status === 'VERIFICAR' ? 'VERIFICAR' : (status ? 'OK' : '-'))
 
                         return `
                           <tr>
+                            ${showDesenho ? `<td style="padding: 2px;" ${!hasMultipleSubitems && hasMultiple ? `rowspan="${rowspan}"` : ''}><img src="${desenhoUrl}" style="width: 65px; height: auto; max-height: ${hasMultiple && !hasMultipleSubitems ? '180px' : '50px'}; object-fit: contain;" onerror="this.style.display='none'" /></td>` : ''}
                             ${hasMultiple ? `<td style="text-align: center; font-weight: bold;">${med.instancia || ''}</td>` : ''}
                             ${hasMultipleSubitems ? `<td>${subitemLabels[med.subitem] || med.subitem}</td>` : ''}
                             <td>${med.dimensaoStd !== null ? med.dimensaoStd.toFixed(1) : '-'}</td>
