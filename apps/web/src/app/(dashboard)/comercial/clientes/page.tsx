@@ -26,6 +26,9 @@ import {
   Trash2,
   RefreshCw,
   Building2,
+  MessageSquare,
+  Sparkles,
+  Send,
 } from 'lucide-react'
 
 interface Cliente {
@@ -77,6 +80,19 @@ interface CNPJData {
   }>
 }
 
+interface Anotacao {
+  id: string
+  texto: string
+  createdAt: string
+  vendedor: {
+    id: string
+    user: {
+      name: string
+      photo: string | null
+    }
+  }
+}
+
 const API_URL = process.env.NEXT_PUBLIC_API_URL
 
 export default function ClientesPage() {
@@ -99,6 +115,14 @@ export default function ClientesPage() {
   const [editingId, setEditingId] = useState<string | null>(null)
   const [saving, setSaving] = useState(false)
   const [searchingCNPJ, setSearchingCNPJ] = useState(false)
+
+  // Anotações states
+  const [anotacoes, setAnotacoes] = useState<Anotacao[]>([])
+  const [novaAnotacao, setNovaAnotacao] = useState('')
+  const [loadingAnotacoes, setLoadingAnotacoes] = useState(false)
+  const [savingAnotacao, setSavingAnotacao] = useState(false)
+  const [resumoIA, setResumoIA] = useState('')
+  const [loadingResumo, setLoadingResumo] = useState(false)
 
   // Form state
   const [formData, setFormData] = useState({
@@ -284,6 +308,93 @@ export default function ClientesPage() {
     })
   }
 
+  // Funções de anotações
+  const fetchAnotacoes = async (clienteId: string) => {
+    if (!meuVendedorId) return
+
+    try {
+      setLoadingAnotacoes(true)
+      const res = await fetch(`${API_URL}/anotacoes?clienteId=${clienteId}&vendedorId=${meuVendedorId}`)
+      if (!res.ok) throw new Error('Erro ao carregar anotações')
+      const data = await res.json()
+      setAnotacoes(data)
+    } catch (err: any) {
+      console.error('Erro ao carregar anotações:', err)
+    } finally {
+      setLoadingAnotacoes(false)
+    }
+  }
+
+  const handleAddAnotacao = async () => {
+    if (!novaAnotacao.trim() || !selectedCliente || !meuVendedorId) return
+
+    try {
+      setSavingAnotacao(true)
+      const res = await fetch(`${API_URL}/anotacoes`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          clienteId: selectedCliente.id,
+          vendedorId: meuVendedorId,
+          texto: novaAnotacao.trim(),
+        }),
+      })
+
+      if (!res.ok) throw new Error('Erro ao salvar anotação')
+
+      setNovaAnotacao('')
+      setResumoIA('') // Limpar resumo ao adicionar nova anotação
+      fetchAnotacoes(selectedCliente.id)
+    } catch (err: any) {
+      setError(err.message)
+    } finally {
+      setSavingAnotacao(false)
+    }
+  }
+
+  const handleGerarResumo = async () => {
+    if (!selectedCliente || !meuVendedorId || anotacoes.length === 0) return
+
+    try {
+      setLoadingResumo(true)
+      const res = await fetch(`${API_URL}/anotacoes/resumir`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          clienteId: selectedCliente.id,
+          vendedorId: meuVendedorId,
+        }),
+      })
+
+      if (!res.ok) throw new Error('Erro ao gerar resumo')
+
+      const data = await res.json()
+      setResumoIA(data.resumo)
+    } catch (err: any) {
+      setError(err.message)
+    } finally {
+      setLoadingResumo(false)
+    }
+  }
+
+  const handleDeleteAnotacao = async (anotacaoId: string) => {
+    if (!confirm('Tem certeza que deseja excluir esta anotação?')) return
+
+    try {
+      const res = await fetch(`${API_URL}/anotacoes/${anotacaoId}`, {
+        method: 'DELETE',
+      })
+
+      if (!res.ok) throw new Error('Erro ao excluir anotação')
+
+      if (selectedCliente) {
+        fetchAnotacoes(selectedCliente.id)
+      }
+    } catch (err: any) {
+      setError(err.message)
+    }
+  }
+
   const handleDeleteCliente = async (id: string) => {
     if (!confirm('Tem certeza que deseja excluir este cliente?')) return
 
@@ -305,6 +416,12 @@ export default function ClientesPage() {
   const handleViewCliente = (cliente: Cliente) => {
     setSelectedCliente(cliente)
     setShowViewModal(true)
+    setAnotacoes([])
+    setResumoIA('')
+    setNovaAnotacao('')
+    if (meuVendedorId) {
+      fetchAnotacoes(cliente.id)
+    }
   }
 
   const handleEditCliente = (cliente: Cliente) => {
@@ -871,7 +988,7 @@ export default function ClientesPage() {
               setSelectedCliente(null)
             }}
           />
-          <Card className="relative z-10 w-full max-w-lg mx-4 shadow-xl">
+          <Card className="relative z-10 w-full max-w-2xl mx-4 shadow-xl max-h-[90vh] overflow-y-auto">
             <CardHeader className="pb-4">
               <div className="flex items-center justify-between">
                 <CardTitle className="flex items-center gap-2">
@@ -960,6 +1077,116 @@ export default function ClientesPage() {
                 </Badge>
               </div>
 
+              {/* Seção de Anotações - Apenas para representantes comerciais */}
+              {meuVendedorId && (
+                <div className="pt-4 border-t space-y-4">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      <MessageSquare className="w-4 h-4 text-muted-foreground" />
+                      <p className="text-sm font-semibold">Minhas Anotações</p>
+                      <Badge variant="outline" className="text-xs">
+                        {anotacoes.length}
+                      </Badge>
+                    </div>
+                    {anotacoes.length > 0 && (
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={handleGerarResumo}
+                        disabled={loadingResumo}
+                        className="text-xs"
+                      >
+                        {loadingResumo ? (
+                          <Loader2 className="w-3 h-3 mr-1 animate-spin" />
+                        ) : (
+                          <Sparkles className="w-3 h-3 mr-1" />
+                        )}
+                        Resumir com IA
+                      </Button>
+                    )}
+                  </div>
+
+                  {/* Resumo da IA */}
+                  {resumoIA && (
+                    <div className="p-3 bg-primary/5 border border-primary/20 rounded-lg">
+                      <div className="flex items-center gap-1 mb-2">
+                        <Sparkles className="w-3 h-3 text-primary" />
+                        <span className="text-xs font-semibold text-primary">Resumo IA</span>
+                      </div>
+                      <p className="text-sm text-muted-foreground whitespace-pre-wrap">{resumoIA}</p>
+                    </div>
+                  )}
+
+                  {/* Adicionar nova anotação */}
+                  <div className="flex gap-2">
+                    <Input
+                      placeholder="Adicionar anotação..."
+                      value={novaAnotacao}
+                      onChange={(e) => setNovaAnotacao(e.target.value)}
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter' && !e.shiftKey) {
+                          e.preventDefault()
+                          handleAddAnotacao()
+                        }
+                      }}
+                      className="flex-1 text-sm"
+                    />
+                    <Button
+                      size="sm"
+                      onClick={handleAddAnotacao}
+                      disabled={savingAnotacao || !novaAnotacao.trim()}
+                    >
+                      {savingAnotacao ? (
+                        <Loader2 className="w-4 h-4 animate-spin" />
+                      ) : (
+                        <Send className="w-4 h-4" />
+                      )}
+                    </Button>
+                  </div>
+
+                  {/* Lista de anotações */}
+                  {loadingAnotacoes ? (
+                    <div className="flex items-center justify-center py-4">
+                      <Loader2 className="w-5 h-5 animate-spin text-muted-foreground" />
+                    </div>
+                  ) : anotacoes.length === 0 ? (
+                    <p className="text-xs text-muted-foreground text-center py-4">
+                      Nenhuma anotação ainda. Adicione observações sobre este cliente.
+                    </p>
+                  ) : (
+                    <div className="space-y-2 max-h-48 overflow-y-auto">
+                      {anotacoes.map((anotacao) => (
+                        <div
+                          key={anotacao.id}
+                          className="p-2 bg-muted/50 rounded-lg group"
+                        >
+                          <div className="flex items-start justify-between gap-2">
+                            <p className="text-sm flex-1">{anotacao.texto}</p>
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              className="h-6 w-6 p-0 opacity-0 group-hover:opacity-100 transition-opacity text-destructive hover:text-destructive"
+                              onClick={() => handleDeleteAnotacao(anotacao.id)}
+                            >
+                              <Trash2 className="w-3 h-3" />
+                            </Button>
+                          </div>
+                          <p className="text-xs text-muted-foreground mt-1">
+                            {new Date(anotacao.createdAt).toLocaleDateString('pt-BR', {
+                              day: '2-digit',
+                              month: '2-digit',
+                              year: 'numeric',
+                              hour: '2-digit',
+                              minute: '2-digit',
+                            })}
+                          </p>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              )}
+
               <div className="flex gap-2 pt-4 border-t">
                 <Button
                   variant="outline"
@@ -971,16 +1198,18 @@ export default function ClientesPage() {
                 >
                   Fechar
                 </Button>
-                <Button
-                  className="flex-1"
-                  onClick={() => {
-                    setShowViewModal(false)
-                    handleEditCliente(selectedCliente)
-                  }}
-                >
-                  <Edit className="w-4 h-4 mr-2" />
-                  Editar
-                </Button>
+                {!isVendedora && (
+                  <Button
+                    className="flex-1"
+                    onClick={() => {
+                      setShowViewModal(false)
+                      handleEditCliente(selectedCliente)
+                    }}
+                  >
+                    <Edit className="w-4 h-4 mr-2" />
+                    Editar
+                  </Button>
+                )}
               </div>
             </CardContent>
           </Card>

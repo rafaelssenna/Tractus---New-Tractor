@@ -172,6 +172,9 @@ model Vendedor {
   // Visitas técnicas solicitadas
   visitasTecnicas VisitaTecnica[]
 
+  // Anotações sobre clientes
+  anotacoes     ClienteAnotacao[]
+
   createdAt     DateTime  @default(now())
   updatedAt     DateTime  @updatedAt
 
@@ -217,11 +220,34 @@ model Cliente {
   // Rota semanal (dias que deve ser visitado)
   rotaClientes  RotaCliente[]
 
+  // Anotações do vendedor sobre o cliente
+  anotacoes     ClienteAnotacao[]
+
   active        Boolean   @default(true)
   createdAt     DateTime  @default(now())
   updatedAt     DateTime  @updatedAt
 
   @@map("clientes")
+}
+
+// ==========================================
+// MÓDULO COMERCIAL - ANOTAÇÕES DE CLIENTE
+// ==========================================
+
+model ClienteAnotacao {
+  id            String    @id @default(cuid())
+
+  clienteId     String
+  cliente       Cliente   @relation(fields: [clienteId], references: [id], onDelete: Cascade)
+
+  vendedorId    String
+  vendedor      Vendedor  @relation(fields: [vendedorId], references: [id], onDelete: Cascade)
+
+  texto         String    @db.Text
+
+  createdAt     DateTime  @default(now())
+
+  @@map("cliente_anotacoes")
 }
 
 // ==========================================
