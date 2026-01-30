@@ -113,6 +113,17 @@ enum StatusDespesaVeiculo {
   REPROVADA
 }
 
+enum StatusLaudoInspecao {
+  RASCUNHO
+  ENVIADO
+}
+
+enum CondicaoComponente {
+  BOM
+  REGULAR
+  CRITICO
+}
+
 // ==========================================
 // USUÁRIOS E AUTENTICAÇÃO
 // ==========================================
@@ -133,6 +144,7 @@ model User {
   despesasAprovadas  Despesa[]  @relation("DespesasAprovadas")
   despesasVeiculoAprovadas DespesaVeiculo[] @relation("DespesasVeiculoAprovadas")
   visitasComoInspetor VisitaTecnica[] @relation("InspetorVisitas")
+  laudosInspecao     LaudoInspecao[] @relation("InspetorLaudos")
 
   @@map("users")
 }
@@ -653,6 +665,9 @@ model Despesa {
 model VisitaTecnica {
   id            String              @id @default(cuid())
 
+  // Número da visita (formato: DD/MM/AAAA-NNNN)
+  numero        String?             @unique
+
   // Quem solicitou
   vendedorId    String
   vendedor      Vendedor            @relation(fields: [vendedorId], references: [id], onDelete: Cascade)
@@ -680,10 +695,76 @@ model VisitaTecnica {
   // Motivo do cancelamento (se houver)
   motivoCancelamento String?
 
+  // Laudo de inspeção (preenchido pelo inspetor)
+  laudoInspecao LaudoInspecao?
+
   createdAt     DateTime            @default(now())
   updatedAt     DateTime            @updatedAt
 
   @@map("visitas_tecnicas")
+}
+
+// ==========================================
+// MÓDULO COMERCIAL - LAUDO DE INSPEÇÃO
+// ==========================================
+
+model LaudoInspecao {
+  id                String              @id @default(cuid())
+
+  // Vinculado à visita técnica
+  visitaTecnicaId   String              @unique
+  visitaTecnica     VisitaTecnica       @relation(fields: [visitaTecnicaId], references: [id], onDelete: Cascade)
+
+  // Inspetor que preencheu o laudo
+  inspetorId        String
+  inspetor          User                @relation("InspetorLaudos", fields: [inspetorId], references: [id])
+
+  // Dados do equipamento inspecionado
+  equipamento       String              // Nome/modelo do equipamento
+  numeroSerie       String              // Nº de série
+
+  // Data da inspeção
+  dataInspecao      DateTime            @db.Date
+
+  // Componentes avaliados
+  componentes       ComponenteInspecao[]
+
+  // Fotos gerais (até 5)
+  fotos             String[]            // URLs das fotos no IMGBB
+
+  // Status do laudo
+  status            StatusLaudoInspecao @default(RASCUNHO)
+
+  // Data de envio (quando status = ENVIADO)
+  dataEnvio         DateTime?
+
+  createdAt         DateTime            @default(now())
+  updatedAt         DateTime            @updatedAt
+
+  @@map("laudos_inspecao")
+}
+
+model ComponenteInspecao {
+  id                String              @id @default(cuid())
+
+  laudoInspecaoId   String
+  laudoInspecao     LaudoInspecao       @relation(fields: [laudoInspecaoId], references: [id], onDelete: Cascade)
+
+  // Nome do componente (digitado livremente)
+  nome              String
+
+  // Condição avaliada
+  condicao          CondicaoComponente
+
+  // Observação técnica (corrigida por IA)
+  observacao        String?             @db.Text
+
+  // Ordem de exibição
+  ordem             Int                 @default(0)
+
+  createdAt         DateTime            @default(now())
+
+  @@map("componentes_inspecao")
 }
 
 // ==========================================

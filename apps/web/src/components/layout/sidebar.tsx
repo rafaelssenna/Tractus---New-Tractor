@@ -57,6 +57,7 @@ const allMenuItems: MenuItem[] = [
       { title: 'Despesas', href: '/comercial/despesas', icon: Receipt },
       { title: 'Despesas Veículo', href: '/comercial/despesas-veiculo', icon: Fuel },
       { title: 'Agenda do Inspetor', href: '/comercial/agenda-inspetor', icon: Calendar },
+      { title: 'Laudos do Inspetor', href: '/comercial/laudos-inspetor', icon: ClipboardCheck },
     ],
   },
   {
@@ -97,13 +98,14 @@ export function Sidebar() {
     if (item.submenu) {
       let filteredSubmenu = item.submenu.filter(sub => canAccessRoute(user?.role, sub.href))
 
-      // Para vendedoras, esconder "Visão Geral", "Vendedores", "Agenda do Inspetor" e "Despesas Veículo"
+      // Para vendedoras, esconder "Visão Geral", "Vendedores", "Agenda do Inspetor", "Despesas Veículo" e "Laudos do Inspetor"
       if (isVendedora) {
         filteredSubmenu = filteredSubmenu.filter(sub =>
           sub.href !== '/comercial' &&
           sub.href !== '/comercial/vendedores' &&
           sub.href !== '/comercial/agenda-inspetor' &&
-          sub.href !== '/comercial/despesas-veiculo'
+          sub.href !== '/comercial/despesas-veiculo' &&
+          sub.href !== '/comercial/laudos-inspetor'
         )
         // Adicionar "Minhas Solicitações" no início para vendedoras
         filteredSubmenu = [
