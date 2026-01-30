@@ -216,28 +216,40 @@ function EditarLaudoContent() {
 
     setUploadingFoto(true)
     try {
-      const formData = new FormData()
-      formData.append('image', file)
+      // Converter arquivo para base64
+      const reader = new FileReader()
+      reader.onload = async () => {
+        try {
+          const base64 = reader.result as string
 
-      const res = await fetch(
-        `https://api.imgbb.com/1/upload?key=${process.env.NEXT_PUBLIC_IMGBB_API_KEY}`,
-        {
-          method: 'POST',
-          body: formData,
+          // Usar a API do backend para upload (mesma abordagem das despesas)
+          const res = await fetch(`${API_URL}/despesas/upload`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ image: base64 }),
+          })
+
+          if (!res.ok) throw new Error('Erro ao fazer upload da foto')
+
+          const data = await res.json()
+          setFotos([...fotos, data.url])
+        } catch (err: any) {
+          setError(err.message)
+        } finally {
+          setUploadingFoto(false)
+          if (fotoInputRef.current) {
+            fotoInputRef.current.value = ''
+          }
         }
-      )
-
-      if (!res.ok) throw new Error('Erro ao fazer upload da foto')
-
-      const data = await res.json()
-      setFotos([...fotos, data.data.url])
+      }
+      reader.onerror = () => {
+        setError('Erro ao ler arquivo')
+        setUploadingFoto(false)
+      }
+      reader.readAsDataURL(file)
     } catch (err: any) {
       setError(err.message)
-    } finally {
       setUploadingFoto(false)
-      if (fotoInputRef.current) {
-        fotoInputRef.current.value = ''
-      }
     }
   }
 
