@@ -99,6 +99,20 @@ enum StatusVisitaTecnica {
   CANCELADA
 }
 
+enum TipoDespesaVeiculo {
+  COMBUSTIVEL
+  TROCA_OLEO
+  REVISAO
+  PNEUS_NIVEL
+  PNEUS_TROCA
+}
+
+enum StatusDespesaVeiculo {
+  PENDENTE
+  APROVADA
+  REPROVADA
+}
+
 // ==========================================
 // USUÁRIOS E AUTENTICAÇÃO
 // ==========================================
@@ -117,6 +131,7 @@ model User {
   vendedor           Vendedor?
   sessions           Session[]
   despesasAprovadas  Despesa[]  @relation("DespesasAprovadas")
+  despesasVeiculoAprovadas DespesaVeiculo[] @relation("DespesasVeiculoAprovadas")
   visitasComoInspetor VisitaTecnica[] @relation("InspetorVisitas")
 
   @@map("users")
@@ -174,6 +189,9 @@ model Vendedor {
 
   // Anotações sobre clientes
   anotacoes     ClienteAnotacao[]
+
+  // Despesas de veículo (com km)
+  despesasVeiculo DespesaVeiculo[]
 
   createdAt     DateTime  @default(now())
   updatedAt     DateTime  @updatedAt
@@ -666,4 +684,54 @@ model VisitaTecnica {
   updatedAt     DateTime            @updatedAt
 
   @@map("visitas_tecnicas")
+}
+
+// ==========================================
+// MÓDULO COMERCIAL - DESPESAS DE VEÍCULO (KM)
+// ==========================================
+
+model DespesaVeiculo {
+  id               String                @id @default(cuid())
+
+  vendedorId       String
+  vendedor         Vendedor              @relation(fields: [vendedorId], references: [id], onDelete: Cascade)
+
+  // Dados da despesa
+  data             DateTime              @db.Date
+  tipo             TipoDespesaVeiculo
+  valor            Decimal               @db.Decimal(10, 2)
+  km               Int                   // Quilometragem do odômetro
+
+  // Comprovante (foto do cupom/nota fiscal)
+  comprovante      String?               // URL da imagem no IMGBB
+
+  // Validação da IA
+  validadoPorIA    Boolean               @default(false)
+  valorExtraido    Decimal?              @db.Decimal(10, 2)
+  nomeExtraido     String?
+
+  // Aprovação
+  status           StatusDespesaVeiculo  @default(PENDENTE)
+  aprovadoPorId    String?
+  aprovadoPor      User?                 @relation("DespesasVeiculoAprovadas", fields: [aprovadoPorId], references: [id])
+  dataAprovacao    DateTime?
+  motivoReprovacao String?
+
+  createdAt        DateTime              @default(now())
+  updatedAt        DateTime              @updatedAt
+
+  @@index([vendedorId, data])
+  @@map("despesas_veiculo")
+}
+
+model ConfiguracaoManutencao {
+  id          String              @id @default(cuid())
+  tipo        TipoDespesaVeiculo  @unique
+  intervaloKm Int                 // Intervalo em km para alerta
+  descricao   String?             // Ex: "Troca de óleo a cada 5.000 km"
+
+  createdAt   DateTime            @default(now())
+  updatedAt   DateTime            @updatedAt
+
+  @@map("configuracoes_manutencao")
 }
