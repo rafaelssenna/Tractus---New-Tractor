@@ -88,6 +88,8 @@ export function Sidebar() {
   const [expandedMenus, setExpandedMenus] = useState<string[]>([])
   const { user, logout, isAdmin, isDiretor } = useAuth()
   const isVendedora = user?.role === 'COMERCIAL'
+  const isInspetor = user?.role === 'TECNICO'
+  const isGestor = isAdmin || isDiretor
 
   // Filtrar menus baseado no perfil do usuário
   let menuItems = allMenuItems.filter(item => {
@@ -112,6 +114,13 @@ export function Sidebar() {
           { title: 'Minhas Solicitações', href: '/comercial/minhas-solicitacoes', icon: ClipboardCheck },
           ...filteredSubmenu
         ]
+      }
+
+      // Para admin/diretor, esconder "Laudos do Inspetor" (só aparece pro TECNICO)
+      if (isGestor) {
+        filteredSubmenu = filteredSubmenu.filter(sub =>
+          sub.href !== '/comercial/laudos-inspetor'
+        )
       }
 
       return {
