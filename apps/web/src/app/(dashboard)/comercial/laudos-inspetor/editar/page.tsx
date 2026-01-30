@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect, useRef } from 'react'
+import { useState, useEffect, useRef, Suspense } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { useAuth } from '@/contexts/auth-context'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
@@ -78,6 +78,18 @@ const CONDICAO_CONFIG = {
 }
 
 export default function EditarLaudoPage() {
+  return (
+    <Suspense fallback={
+      <div className="flex items-center justify-center h-[60vh]">
+        <Loader2 className="w-8 h-8 animate-spin text-muted-foreground" />
+      </div>
+    }>
+      <EditarLaudoContent />
+    </Suspense>
+  )
+}
+
+function EditarLaudoContent() {
   const router = useRouter()
   const searchParams = useSearchParams()
   const visitaId = searchParams.get('visita')
