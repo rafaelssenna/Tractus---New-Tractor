@@ -50,6 +50,12 @@ async function gerarNumeroVisita(dataVisita: Date): Promise<string> {
 // Corrigir texto técnico com IA
 async function corrigirTextoTecnico(texto: string): Promise<string> {
   try {
+    if (!process.env.GEMINI_API_KEY) {
+      console.warn('[IA] GEMINI_API_KEY não configurada - correção de texto desabilitada')
+      return texto
+    }
+
+    console.log('[IA] Corrigindo texto:', texto.substring(0, 50) + '...')
     const model = genAI.getGenerativeModel({ model: 'gemini-1.5-flash' })
 
     const prompt = `Você é um especialista em manutenção de equipamentos pesados (tratores, escavadeiras, etc).
@@ -68,9 +74,10 @@ Retorne APENAS o texto corrigido, sem explicações.`
     const response = await result.response
     const corrigido = response.text().trim()
 
+    console.log('[IA] Texto corrigido:', corrigido.substring(0, 50) + '...')
     return corrigido || texto
   } catch (error) {
-    console.error('Erro ao corrigir texto com IA:', error)
+    console.error('[IA] Erro ao corrigir texto:', error)
     return texto
   }
 }
