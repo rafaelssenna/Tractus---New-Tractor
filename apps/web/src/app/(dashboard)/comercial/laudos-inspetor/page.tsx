@@ -36,6 +36,19 @@ const TIPO_LABELS: Record<string, string> = {
   RODA_MOTRIZ: 'Roda Motriz',
 }
 
+const SUBITEM_LABELS: Record<string, string> = {
+  PASSO_CORRENTE: 'Passo da corrente',
+  DIAMETRO_BUCHA: 'Diâm. externo da bucha',
+  ALTURA_ELO: 'Altura do elo',
+  ALTURA_GARRA: 'Altura da garra',
+  DIAMETRO_PISTA: 'Diâm. da pista',
+  ALTURA_FLANGE: 'Altura da flange',
+  CONDICAO_VISUAL: 'Condição visual',
+}
+
+// Ordem dos tipos para exibição
+const TIPOS_ORDEM = ['ESTEIRA', 'SAPATA', 'ROLETE_INFERIOR', 'ROLETE_SUPERIOR', 'RODA_GUIA', 'RODA_MOTRIZ']
+
 const STATUS_CONFIG = {
   DENTRO_PARAMETROS: { label: 'OK', color: 'bg-green-500/20 text-green-600 border-green-500/30', icon: Check },
   VERIFICAR: { label: 'Verificar', color: 'bg-yellow-500/20 text-yellow-600 border-yellow-500/30', icon: AlertTriangle },
@@ -45,10 +58,14 @@ const STATUS_CONFIG = {
 interface Medicao {
   id: string
   tipo: string
+  subitem?: string
+  instancia?: number
   desgasteLE: string | null
   desgasteLD: string | null
   statusLE: string | null
   statusLD: string | null
+  avaliacaoVisualLE?: string | null
+  avaliacaoVisualLD?: string | null
 }
 
 interface Laudo {
@@ -229,61 +246,124 @@ export default function LaudosInspetorPage() {
             </div>
           </div>
 
-          <div class="info-section">
-            <h2>Medições de Componentes (mm)</h2>
-            <table class="measurements-table">
-              <thead>
-                <tr>
-                  <th style="width: 15%;">Componente</th>
-                  <th style="width: 10%;">Dim. Std</th>
-                  <th style="width: 10%;">Lim. Reparo</th>
-                  <th style="width: 10%;">Medição LE</th>
-                  <th style="width: 10%;">Medição LD</th>
-                  <th style="width: 9%;">% Desg. LE</th>
-                  <th style="width: 9%;">% Desg. LD</th>
-                  <th style="width: 27%;">NOTA</th>
-                </tr>
-              </thead>
-              <tbody>
-                ${data.medicoes.map((med: any) => {
-                  const getStatusClass = (status: string | null) => {
-                    if (!status) return ''
-                    if (status === 'DENTRO_PARAMETROS') return 'status-ok'
-                    if (status === 'VERIFICAR') return 'status-verificar'
-                    return 'status-fora'
-                  }
-                  const maxStatus = (le: string | null, ld: string | null) => {
-                    const priority: Record<string, number> = { 'FORA_PARAMETROS': 3, 'VERIFICAR': 2, 'DENTRO_PARAMETROS': 1 }
-                    const pLE = priority[le || ''] || 0
-                    const pLD = priority[ld || ''] || 0
-                    if (pLE >= pLD) return le
-                    return ld
-                  }
-                  const status = maxStatus(med.statusLE, med.statusLD)
-                  // Nota com texto completo como no documento de referência
-                  const notaClass = status === 'FORA_PARAMETROS' ? 'status-fora' : (status === 'VERIFICAR' ? 'status-verificar' : 'status-ok')
-                  const notaText = status === 'FORA_PARAMETROS' ? 'FORA DOS PARÂMETROS DE DESGASTE' : 'DENTRO DOS PARÂMETROS DE DESGASTE'
+          ${(() => {
+            // Agrupar medições por tipo de componente
+            const tiposOrdem = ['ESTEIRA', 'SAPATA', 'ROLETE_INFERIOR', 'ROLETE_SUPERIOR', 'RODA_GUIA', 'RODA_MOTRIZ']
+            const tipoLabels: Record<string, string> = {
+              ESTEIRA: 'Esteira',
+              SAPATA: 'Sapata',
+              ROLETE_INFERIOR: 'Rolete Inferior',
+              ROLETE_SUPERIOR: 'Rolete Superior',
+              RODA_GUIA: 'Roda Guia',
+              RODA_MOTRIZ: 'Roda Motriz',
+            }
+            const subitemLabels: Record<string, string> = {
+              PASSO_CORRENTE: 'Passo da corrente',
+              DIAMETRO_BUCHA: 'Diâm. externo da bucha',
+              ALTURA_ELO: 'Altura do elo',
+              ALTURA_GARRA: 'Altura da garra',
+              DIAMETRO_PISTA: 'Diâm. da pista',
+              ALTURA_FLANGE: 'Altura da flange',
+              CONDICAO_VISUAL: 'Condição visual',
+            }
 
-                  return `
-                    <tr>
-                      <td>${med.tipoLabel}</td>
-                      <td>${med.dimensaoStd !== null ? med.dimensaoStd.toFixed(2) : '-'}</td>
-                      <td>${med.limiteReparo !== null ? med.limiteReparo.toFixed(2) : '-'}</td>
-                      <td>${med.medicaoLE !== null ? med.medicaoLE.toFixed(2) : '-'}</td>
-                      <td>${med.medicaoLD !== null ? med.medicaoLD.toFixed(2) : '-'}</td>
-                      <td class="${getStatusClass(med.statusLE)}">${med.desgasteLE !== null ? med.desgasteLE.toFixed(1) + '%' : '-'}</td>
-                      <td class="${getStatusClass(med.statusLD)}">${med.desgasteLD !== null ? med.desgasteLD.toFixed(1) + '%' : '-'}</td>
-                      <td class="${notaClass}" style="font-size: 8px; font-weight: bold;">${notaText}</td>
-                    </tr>
-                  `
-                }).join('')}
-              </tbody>
-            </table>
-            <div class="legend">
-              <div class="legend-item"><div class="legend-color" style="background: #d4edda;"></div> Dentro dos parâmetros (≤70%)</div>
-              <div class="legend-item"><div class="legend-color" style="background: #fff3cd;"></div> Verificar (70-100%)</div>
-              <div class="legend-item"><div class="legend-color" style="background: #f8d7da;"></div> Fora dos parâmetros (>100%)</div>
-            </div>
+            const getStatusClass = (status: string | null) => {
+              if (!status) return ''
+              if (status === 'DENTRO_PARAMETROS') return 'status-ok'
+              if (status === 'VERIFICAR') return 'status-verificar'
+              return 'status-fora'
+            }
+            const maxStatus = (le: string | null, ld: string | null) => {
+              const priority: Record<string, number> = { 'FORA_PARAMETROS': 3, 'VERIFICAR': 2, 'DENTRO_PARAMETROS': 1 }
+              const pLE = priority[le || ''] || 0
+              const pLD = priority[ld || ''] || 0
+              if (pLE >= pLD) return le
+              return ld
+            }
+
+            // Agrupar medições por tipo
+            const medicoesPorTipo: Record<string, any[]> = {}
+            for (const med of data.medicoes) {
+              if (!medicoesPorTipo[med.tipo]) {
+                medicoesPorTipo[med.tipo] = []
+              }
+              medicoesPorTipo[med.tipo].push(med)
+            }
+
+            // Gerar seções HTML para cada tipo
+            return tiposOrdem.map(tipo => {
+              const meds = medicoesPorTipo[tipo]
+              if (!meds || meds.length === 0) return ''
+
+              const tipoLabel = tipoLabels[tipo] || tipo
+              const isVisual = meds[0]?.subitem === 'CONDICAO_VISUAL'
+              const hasMultiple = meds.length > 1
+              const hasMultipleSubitems = new Set(meds.map((m: any) => m.subitem)).size > 1
+
+              return `
+                <div class="info-section">
+                  <h2>${tipoLabel}</h2>
+                  <table class="measurements-table">
+                    <thead>
+                      <tr>
+                        ${isVisual ? `
+                          <th style="width: 30%;">Check Item</th>
+                          <th style="width: 35%;">Avaliação LE</th>
+                          <th style="width: 35%;">Avaliação LD</th>
+                        ` : `
+                          ${hasMultiple ? '<th style="width: 6%;">Nº</th>' : ''}
+                          ${hasMultipleSubitems ? '<th style="width: 14%;">Check Item</th>' : ''}
+                          <th style="width: 10%;">Dim. Std</th>
+                          <th style="width: 10%;">Lim. Rep</th>
+                          <th style="width: 10%;">Med. LE</th>
+                          <th style="width: 10%;">Med. LD</th>
+                          <th style="width: 9%;">% LE</th>
+                          <th style="width: 9%;">% LD</th>
+                          <th style="width: ${hasMultiple || hasMultipleSubitems ? '22%' : '32%'};">NOTA</th>
+                        `}
+                      </tr>
+                    </thead>
+                    <tbody>
+                      ${meds.map((med: any) => {
+                        if (isVisual) {
+                          return `
+                            <tr>
+                              <td>${subitemLabels[med.subitem] || med.subitem}</td>
+                              <td style="text-align: center; font-weight: bold; ${med.avaliacaoVisualLE === 'BOM' ? 'color: green;' : 'color: orange;'}">${med.avaliacaoVisualLE || '-'}</td>
+                              <td style="text-align: center; font-weight: bold; ${med.avaliacaoVisualLD === 'BOM' ? 'color: green;' : 'color: orange;'}">${med.avaliacaoVisualLD || '-'}</td>
+                            </tr>
+                          `
+                        }
+
+                        const status = maxStatus(med.statusLE, med.statusLD)
+                        const notaClass = status === 'FORA_PARAMETROS' ? 'status-fora' : (status === 'VERIFICAR' ? 'status-verificar' : (status ? 'status-ok' : ''))
+                        const notaText = status === 'FORA_PARAMETROS' ? 'FORA DOS PARÂMETROS' : (status === 'VERIFICAR' ? 'VERIFICAR' : (status ? 'DENTRO DOS PARÂMETROS' : '-'))
+
+                        return `
+                          <tr>
+                            ${hasMultiple ? `<td style="text-align: center; font-weight: bold;">${med.instancia || ''}</td>` : ''}
+                            ${hasMultipleSubitems ? `<td>${subitemLabels[med.subitem] || med.subitem}</td>` : ''}
+                            <td>${med.dimensaoStd !== null ? med.dimensaoStd.toFixed(1) : '-'}</td>
+                            <td>${med.limiteReparo !== null ? med.limiteReparo.toFixed(1) : '-'}</td>
+                            <td>${med.medicaoLE !== null ? med.medicaoLE.toFixed(1) : '-'}</td>
+                            <td>${med.medicaoLD !== null ? med.medicaoLD.toFixed(1) : '-'}</td>
+                            <td class="${getStatusClass(med.statusLE)}">${med.desgasteLE !== null ? med.desgasteLE.toFixed(1) + '%' : '-'}</td>
+                            <td class="${getStatusClass(med.statusLD)}">${med.desgasteLD !== null ? med.desgasteLD.toFixed(1) + '%' : '-'}</td>
+                            <td class="${notaClass}" style="font-size: 8px; font-weight: bold;">${notaText}</td>
+                          </tr>
+                        `
+                      }).join('')}
+                    </tbody>
+                  </table>
+                </div>
+              `
+            }).join('')
+          })()}
+
+          <div class="legend" style="margin-top: 10px;">
+            <div class="legend-item"><div class="legend-color" style="background: #d4edda;"></div> Dentro dos parâmetros (≤70%)</div>
+            <div class="legend-item"><div class="legend-color" style="background: #fff3cd;"></div> Verificar (70-100%)</div>
+            <div class="legend-item"><div class="legend-color" style="background: #f8d7da;"></div> Fora dos parâmetros (>100%)</div>
           </div>
 
           ${data.sumario ? `

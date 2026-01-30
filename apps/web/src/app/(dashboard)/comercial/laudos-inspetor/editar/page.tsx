@@ -28,6 +28,9 @@ import {
   Check,
   Trash2,
   Sparkles,
+  Image as ImageIcon,
+  ChevronDown,
+  ChevronUp,
 } from 'lucide-react'
 
 // Tipos de componentes rodantes
@@ -40,10 +43,53 @@ const TIPOS_COMPONENTES = [
   { tipo: 'RODA_MOTRIZ', label: 'Roda Motriz' },
 ] as const
 
+// Sub-itens de medição
+const SUBITEMS_MEDICAO = [
+  'PASSO_CORRENTE',
+  'DIAMETRO_BUCHA',
+  'ALTURA_ELO',
+  'ALTURA_GARRA',
+  'DIAMETRO_PISTA',
+  'ALTURA_FLANGE',
+  'CONDICAO_VISUAL',
+] as const
+
 type TipoComponente = typeof TIPOS_COMPONENTES[number]['tipo']
+type SubitemMedicao = typeof SUBITEMS_MEDICAO[number]
+
+// Labels para sub-itens
+const SUBITEM_LABELS: Record<string, string> = {
+  PASSO_CORRENTE: 'Passo da corrente',
+  DIAMETRO_BUCHA: 'Diâm. externo da bucha',
+  ALTURA_ELO: 'Altura do elo',
+  ALTURA_GARRA: 'Altura da garra',
+  DIAMETRO_PISTA: 'Diâm. da pista',
+  ALTURA_FLANGE: 'Altura da flange',
+  CONDICAO_VISUAL: 'Condição visual',
+}
+
+// Configurações padrão por tipo de componente
+const CONFIGURACOES_PADRAO = [
+  // ESTEIRA - 3 sub-itens
+  { tipo: 'ESTEIRA', subitem: 'PASSO_CORRENTE', descricao: 'Passo da corrente', dimensaoStd: 1041.5, limiteReparo: 1051.0, numInstancias: 1, desenhoUrl: '/desenhos/esteira-passo.png', ordem: 1 },
+  { tipo: 'ESTEIRA', subitem: 'DIAMETRO_BUCHA', descricao: 'Diâmetro externo da bucha', dimensaoStd: 87.8, limiteReparo: 82.8, numInstancias: 1, desenhoUrl: '/desenhos/esteira-bucha.png', ordem: 2 },
+  { tipo: 'ESTEIRA', subitem: 'ALTURA_ELO', descricao: 'Altura do elo', dimensaoStd: 155.0, limiteReparo: 142.5, numInstancias: 1, desenhoUrl: '/desenhos/esteira-elo.png', ordem: 3 },
+  // SAPATA - 1 sub-item
+  { tipo: 'SAPATA', subitem: 'ALTURA_GARRA', descricao: 'Altura da garra da sapata', dimensaoStd: 50.0, limiteReparo: 24.0, numInstancias: 1, desenhoUrl: '/desenhos/sapata.png', ordem: 4 },
+  // ROLETE INFERIOR - 10 instâncias
+  { tipo: 'ROLETE_INFERIOR', subitem: 'DIAMETRO_PISTA', descricao: 'Diâmetro da pista do rolete', dimensaoStd: 260.0, limiteReparo: 240.0, numInstancias: 10, desenhoUrl: '/desenhos/rolete-inferior.png', ordem: 5 },
+  // ROLETE SUPERIOR - 2 instâncias
+  { tipo: 'ROLETE_SUPERIOR', subitem: 'DIAMETRO_PISTA', descricao: 'Diâmetro da pista do rolete', dimensaoStd: 175.0, limiteReparo: 155.0, numInstancias: 2, desenhoUrl: '/desenhos/rolete-superior.png', ordem: 6 },
+  // RODA GUIA - 1 sub-item
+  { tipo: 'RODA_GUIA', subitem: 'ALTURA_FLANGE', descricao: 'Altura da flange da roda guia', dimensaoStd: 20.0, limiteReparo: 32.5, numInstancias: 1, desenhoUrl: '/desenhos/roda-guia.png', ordem: 7 },
+  // RODA MOTRIZ - avaliação visual
+  { tipo: 'RODA_MOTRIZ', subitem: 'CONDICAO_VISUAL', descricao: 'Verificar para seguimentos', dimensaoStd: null, limiteReparo: null, numInstancias: 1, desenhoUrl: '/desenhos/roda-motriz.png', ordem: 8 },
+] as const
 
 interface MedicaoForm {
   tipo: TipoComponente
+  subitem: SubitemMedicao
+  instancia: number
   dimensaoStd: number | null
   limiteReparo: number | null
   medicaoLE: number | null
@@ -52,6 +98,8 @@ interface MedicaoForm {
   desgasteLD: number | null
   statusLE: string | null
   statusLD: string | null
+  avaliacaoVisualLE: string | null
+  avaliacaoVisualLD: string | null
   observacao: string
 }
 
@@ -76,6 +124,8 @@ interface Laudo {
   medicoesRodante: {
     id: string
     tipo: TipoComponente
+    subitem: SubitemMedicao
+    instancia: number
     dimensaoStd: string | null
     limiteReparo: string | null
     medicaoLE: string | null
@@ -84,6 +134,8 @@ interface Laudo {
     desgasteLD: string | null
     statusLE: string | null
     statusLD: string | null
+    avaliacaoVisualLE: string | null
+    avaliacaoVisualLD: string | null
     observacao: string | null
   }[]
   fotosComponentes: {
@@ -117,20 +169,10 @@ interface VisitaTecnica {
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL
 
-// Valores padrão para cada tipo de componente
-const VALORES_PADRAO: Record<TipoComponente, { dimensaoStd: number; limiteReparo: number }> = {
-  ESTEIRA: { dimensaoStd: 175.0, limiteReparo: 155.0 },
-  SAPATA: { dimensaoStd: 32.0, limiteReparo: 22.0 },
-  ROLETE_INFERIOR: { dimensaoStd: 185.0, limiteReparo: 171.0 },
-  ROLETE_SUPERIOR: { dimensaoStd: 145.0, limiteReparo: 133.0 },
-  RODA_GUIA: { dimensaoStd: 555.0, limiteReparo: 525.0 },
-  RODA_MOTRIZ: { dimensaoStd: 225.0, limiteReparo: 210.0 },
-}
-
 const STATUS_CONFIG = {
-  DENTRO_PARAMETROS: { label: 'Dentro dos parâmetros', color: 'bg-green-500/20 text-green-600 border-green-500/30', icon: Check },
+  DENTRO_PARAMETROS: { label: 'OK', color: 'bg-green-500/20 text-green-600 border-green-500/30', icon: Check },
   VERIFICAR: { label: 'Verificar', color: 'bg-yellow-500/20 text-yellow-600 border-yellow-500/30', icon: AlertTriangle },
-  FORA_PARAMETROS: { label: 'Fora dos parâmetros', color: 'bg-red-500/20 text-red-600 border-red-500/30', icon: AlertCircle },
+  FORA_PARAMETROS: { label: 'Crítico', color: 'bg-red-500/20 text-red-600 border-red-500/30', icon: AlertCircle },
 }
 
 const CONDICAO_SOLO_OPTIONS = [
@@ -145,18 +187,20 @@ function calcularDesgaste(dimensaoStd: number | null, limiteReparo: number | nul
     return { desgaste: null, status: null }
   }
 
-  const faixaTotal = dimensaoStd - limiteReparo
+  const faixaTotal = Math.abs(dimensaoStd - limiteReparo)
   if (faixaTotal <= 0) {
     return { desgaste: null, status: null }
   }
 
-  const desgasteAtual = dimensaoStd - medicao
+  // Para dimensões que diminuem com desgaste (ex: diâmetro)
+  // Fórmula: ((dimensaoStd - medicao) / (dimensaoStd - limiteReparo)) * 100
+  const desgasteAtual = Math.abs(dimensaoStd - medicao)
   const percentual = (desgasteAtual / faixaTotal) * 100
 
   let status: string
   if (percentual <= 70) {
     status = 'DENTRO_PARAMETROS'
-  } else if (percentual <= 90) {
+  } else if (percentual <= 100) {
     status = 'VERIFICAR'
   } else {
     status = 'FORA_PARAMETROS'
@@ -192,6 +236,16 @@ function EditarLaudoContent() {
   const [saving, setSaving] = useState(false)
   const [enviando, setEnviando] = useState(false)
   const [savedMessage, setSavedMessage] = useState('')
+
+  // Seções expandidas/colapsadas
+  const [expandedSections, setExpandedSections] = useState<Record<string, boolean>>({
+    ESTEIRA: true,
+    SAPATA: true,
+    ROLETE_INFERIOR: true,
+    ROLETE_SUPERIOR: true,
+    RODA_GUIA: true,
+    RODA_MOTRIZ: true,
+  })
 
   // Form do laudo
   const [laudoForm, setLaudoForm] = useState({
@@ -248,11 +302,13 @@ function EditarLaudoContent() {
           sumario: laudo.sumario || '',
         })
 
-        // Carregar medições
+        // Carregar medições existentes
         if (laudo.medicoesRodante && laudo.medicoesRodante.length > 0) {
           setMedicoes(
             laudo.medicoesRodante.map((m) => ({
               tipo: m.tipo,
+              subitem: m.subitem,
+              instancia: m.instancia,
               dimensaoStd: m.dimensaoStd ? parseFloat(m.dimensaoStd) : null,
               limiteReparo: m.limiteReparo ? parseFloat(m.limiteReparo) : null,
               medicaoLE: m.medicaoLE ? parseFloat(m.medicaoLE) : null,
@@ -261,6 +317,8 @@ function EditarLaudoContent() {
               desgasteLD: m.desgasteLD ? parseFloat(m.desgasteLD) : null,
               statusLE: m.statusLE,
               statusLD: m.statusLD,
+              avaliacaoVisualLE: m.avaliacaoVisualLE,
+              avaliacaoVisualLD: m.avaliacaoVisualLD,
               observacao: m.observacao || '',
             }))
           )
@@ -303,47 +361,60 @@ function EditarLaudoContent() {
   }
 
   const inicializarMedicoes = () => {
-    const medicoesIniciais: MedicaoForm[] = TIPOS_COMPONENTES.map(({ tipo }) => ({
-      tipo,
-      dimensaoStd: VALORES_PADRAO[tipo].dimensaoStd,
-      limiteReparo: VALORES_PADRAO[tipo].limiteReparo,
-      medicaoLE: null,
-      medicaoLD: null,
-      desgasteLE: null,
-      desgasteLD: null,
-      statusLE: null,
-      statusLD: null,
-      observacao: '',
-    }))
+    const medicoesIniciais: MedicaoForm[] = []
+
+    CONFIGURACOES_PADRAO.forEach(config => {
+      for (let i = 1; i <= config.numInstancias; i++) {
+        medicoesIniciais.push({
+          tipo: config.tipo as TipoComponente,
+          subitem: config.subitem as SubitemMedicao,
+          instancia: i,
+          dimensaoStd: config.dimensaoStd,
+          limiteReparo: config.limiteReparo,
+          medicaoLE: null,
+          medicaoLD: null,
+          desgasteLE: null,
+          desgasteLD: null,
+          statusLE: null,
+          statusLD: null,
+          avaliacaoVisualLE: null,
+          avaliacaoVisualLD: null,
+          observacao: '',
+        })
+      }
+    })
+
     setMedicoes(medicoesIniciais)
   }
 
-  const updateMedicao = (tipo: TipoComponente, field: keyof MedicaoForm, value: any) => {
+  const updateMedicao = (tipo: TipoComponente, subitem: SubitemMedicao, instancia: number, field: keyof MedicaoForm, value: any) => {
     setMedicoes(prev => {
       const updated = prev.map(m => {
-        if (m.tipo !== tipo) return m
+        if (m.tipo !== tipo || m.subitem !== subitem || m.instancia !== instancia) return m
 
         const newMedicao = { ...m, [field]: value }
 
-        // Recalcular desgaste se mudar medição
-        if (field === 'medicaoLE' || field === 'dimensaoStd' || field === 'limiteReparo') {
-          const calcLE = calcularDesgaste(
-            field === 'dimensaoStd' ? value : newMedicao.dimensaoStd,
-            field === 'limiteReparo' ? value : newMedicao.limiteReparo,
-            field === 'medicaoLE' ? value : newMedicao.medicaoLE
-          )
-          newMedicao.desgasteLE = calcLE.desgaste
-          newMedicao.statusLE = calcLE.status
-        }
+        // Recalcular desgaste se mudar medição (exceto para CONDICAO_VISUAL)
+        if (m.subitem !== 'CONDICAO_VISUAL') {
+          if (field === 'medicaoLE' || field === 'dimensaoStd' || field === 'limiteReparo') {
+            const calcLE = calcularDesgaste(
+              field === 'dimensaoStd' ? value : newMedicao.dimensaoStd,
+              field === 'limiteReparo' ? value : newMedicao.limiteReparo,
+              field === 'medicaoLE' ? value : newMedicao.medicaoLE
+            )
+            newMedicao.desgasteLE = calcLE.desgaste
+            newMedicao.statusLE = calcLE.status
+          }
 
-        if (field === 'medicaoLD' || field === 'dimensaoStd' || field === 'limiteReparo') {
-          const calcLD = calcularDesgaste(
-            field === 'dimensaoStd' ? value : newMedicao.dimensaoStd,
-            field === 'limiteReparo' ? value : newMedicao.limiteReparo,
-            field === 'medicaoLD' ? value : newMedicao.medicaoLD
-          )
-          newMedicao.desgasteLD = calcLD.desgaste
-          newMedicao.statusLD = calcLD.status
+          if (field === 'medicaoLD' || field === 'dimensaoStd' || field === 'limiteReparo') {
+            const calcLD = calcularDesgaste(
+              field === 'dimensaoStd' ? value : newMedicao.dimensaoStd,
+              field === 'limiteReparo' ? value : newMedicao.limiteReparo,
+              field === 'medicaoLD' ? value : newMedicao.medicaoLD
+            )
+            newMedicao.desgasteLD = calcLD.desgaste
+            newMedicao.statusLD = calcLD.status
+          }
         }
 
         return newMedicao
@@ -408,9 +479,15 @@ function EditarLaudoContent() {
     setFotos(updated)
   }
 
+  const toggleSection = (tipo: string) => {
+    setExpandedSections(prev => ({
+      ...prev,
+      [tipo]: !prev[tipo]
+    }))
+  }
+
   const gerarSumarioIA = async () => {
-    // Verificar se há medições
-    const medicoesPreenchidas = medicoes.filter(m => m.medicaoLE !== null || m.medicaoLD !== null)
+    const medicoesPreenchidas = medicoes.filter(m => m.medicaoLE !== null || m.medicaoLD !== null || m.avaliacaoVisualLE || m.avaliacaoVisualLD)
     if (medicoesPreenchidas.length === 0) {
       setError('Preencha as medições antes de gerar o sumário')
       return
@@ -426,10 +503,14 @@ function EditarLaudoContent() {
           equipamento: laudoForm.equipamento,
           medicoes: medicoes.map(m => ({
             tipo: m.tipo,
+            subitem: m.subitem,
+            instancia: m.instancia,
             desgasteLE: m.desgasteLE,
             desgasteLD: m.desgasteLD,
             statusLE: m.statusLE,
             statusLD: m.statusLD,
+            avaliacaoVisualLE: m.avaliacaoVisualLE,
+            avaliacaoVisualLD: m.avaliacaoVisualLD,
           })),
           sumarioAtual: laudoForm.sumario || undefined,
         }),
@@ -460,8 +541,7 @@ function EditarLaudoContent() {
       return
     }
 
-    // Verificar se há pelo menos uma medição preenchida
-    const medicoesPreenchidas = medicoes.filter(m => m.medicaoLE !== null || m.medicaoLD !== null)
+    const medicoesPreenchidas = medicoes.filter(m => m.medicaoLE !== null || m.medicaoLD !== null || m.avaliacaoVisualLE || m.avaliacaoVisualLD)
     if (medicoesPreenchidas.length === 0) {
       setError('Preencha pelo menos uma medição')
       return
@@ -483,10 +563,14 @@ function EditarLaudoContent() {
         sumario: laudoForm.sumario || undefined,
         medicoes: medicoes.map(m => ({
           tipo: m.tipo,
+          subitem: m.subitem,
+          instancia: m.instancia,
           dimensaoStd: m.dimensaoStd,
           limiteReparo: m.limiteReparo,
           medicaoLE: m.medicaoLE,
           medicaoLD: m.medicaoLD,
+          avaliacaoVisualLE: m.avaliacaoVisualLE,
+          avaliacaoVisualLD: m.avaliacaoVisualLD,
           observacao: m.observacao || undefined,
         })),
         fotos: fotos.map(f => ({
@@ -529,7 +613,6 @@ function EditarLaudoContent() {
   }
 
   const finalizarLaudo = async () => {
-    // Salvar primeiro se necessário
     if (!laudoId) {
       await salvarLaudo()
     }
@@ -557,6 +640,14 @@ function EditarLaudoContent() {
       setEnviando(false)
     }
   }
+
+  // Agrupar medições por tipo de componente
+  const medicoesPorTipo = TIPOS_COMPONENTES.map(({ tipo, label }) => ({
+    tipo,
+    label,
+    medicoes: medicoes.filter(m => m.tipo === tipo),
+    config: CONFIGURACOES_PADRAO.find(c => c.tipo === tipo),
+  }))
 
   if (loading) {
     return (
@@ -760,111 +851,233 @@ function EditarLaudoContent() {
         </CardContent>
       </Card>
 
-      {/* Tabela de Medições */}
-      <Card className="border-border/50">
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <Ruler className="w-5 h-5" />
-            Medições de Componentes (mm)
-          </CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="overflow-x-auto">
-            <table className="w-full border-collapse">
-              <thead>
-                <tr className="bg-muted/50">
-                  <th className="border border-border px-3 py-2 text-left font-medium">Componente</th>
-                  <th className="border border-border px-3 py-2 text-center font-medium">Dimensão Std</th>
-                  <th className="border border-border px-3 py-2 text-center font-medium">Limite Reparo</th>
-                  <th className="border border-border px-3 py-2 text-center font-medium" colSpan={2}>Medição LE</th>
-                  <th className="border border-border px-3 py-2 text-center font-medium" colSpan={2}>Medição LD</th>
-                  <th className="border border-border px-3 py-2 text-center font-medium">% Desg. LE</th>
-                  <th className="border border-border px-3 py-2 text-center font-medium">% Desg. LD</th>
-                </tr>
-              </thead>
-              <tbody>
-                {medicoes.map((med) => {
-                  const tipoInfo = TIPOS_COMPONENTES.find(t => t.tipo === med.tipo)
-                  const statusLEConfig = med.statusLE ? STATUS_CONFIG[med.statusLE as keyof typeof STATUS_CONFIG] : null
-                  const statusLDConfig = med.statusLD ? STATUS_CONFIG[med.statusLD as keyof typeof STATUS_CONFIG] : null
+      {/* Seções de Medição por Componente */}
+      {medicoesPorTipo.map(({ tipo, label, medicoes: meds, config }) => (
+        <Card key={tipo} className="border-border/50">
+          <CardHeader className="cursor-pointer" onClick={() => toggleSection(tipo)}>
+            <div className="flex items-center justify-between">
+              <CardTitle className="flex items-center gap-2">
+                <Ruler className="w-5 h-5" />
+                {label}
+                {meds.length > 1 && (
+                  <Badge variant="outline" className="ml-2">
+                    {meds.length} medições
+                  </Badge>
+                )}
+              </CardTitle>
+              <div className="flex items-center gap-2">
+                {config?.desenhoUrl && (
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={(e) => {
+                      e.stopPropagation()
+                      window.open(config.desenhoUrl!, '_blank')
+                    }}
+                    title="Ver desenho técnico"
+                  >
+                    <ImageIcon className="w-4 h-4" />
+                  </Button>
+                )}
+                {expandedSections[tipo] ? (
+                  <ChevronUp className="w-5 h-5 text-muted-foreground" />
+                ) : (
+                  <ChevronDown className="w-5 h-5 text-muted-foreground" />
+                )}
+              </div>
+            </div>
+          </CardHeader>
 
-                  return (
-                    <tr key={med.tipo}>
-                      <td className="border border-border px-3 py-2 font-medium">
-                        {tipoInfo?.label}
-                      </td>
-                      <td className="border border-border px-2 py-1">
-                        <Input
-                          type="number"
-                          step="0.01"
-                          value={med.dimensaoStd ?? ''}
-                          onChange={(e) => updateMedicao(med.tipo, 'dimensaoStd', e.target.value ? parseFloat(e.target.value) : null)}
-                          className="h-8 text-center"
-                          disabled={isEnviado}
-                        />
-                      </td>
-                      <td className="border border-border px-2 py-1">
-                        <Input
-                          type="number"
-                          step="0.01"
-                          value={med.limiteReparo ?? ''}
-                          onChange={(e) => updateMedicao(med.tipo, 'limiteReparo', e.target.value ? parseFloat(e.target.value) : null)}
-                          className="h-8 text-center"
-                          disabled={isEnviado}
-                        />
-                      </td>
-                      <td className="border border-border px-2 py-1" colSpan={2}>
-                        <Input
-                          type="number"
-                          step="0.01"
-                          value={med.medicaoLE ?? ''}
-                          onChange={(e) => updateMedicao(med.tipo, 'medicaoLE', e.target.value ? parseFloat(e.target.value) : null)}
-                          className="h-8 text-center"
-                          placeholder="Medição"
-                          disabled={isEnviado}
-                        />
-                      </td>
-                      <td className="border border-border px-2 py-1" colSpan={2}>
-                        <Input
-                          type="number"
-                          step="0.01"
-                          value={med.medicaoLD ?? ''}
-                          onChange={(e) => updateMedicao(med.tipo, 'medicaoLD', e.target.value ? parseFloat(e.target.value) : null)}
-                          className="h-8 text-center"
-                          placeholder="Medição"
-                          disabled={isEnviado}
-                        />
-                      </td>
-                      <td className={`border border-border px-2 py-1 text-center ${statusLEConfig ? statusLEConfig.color : ''}`}>
-                        {med.desgasteLE !== null ? `${med.desgasteLE}%` : '-'}
-                      </td>
-                      <td className={`border border-border px-2 py-1 text-center ${statusLDConfig ? statusLDConfig.color : ''}`}>
-                        {med.desgasteLD !== null ? `${med.desgasteLD}%` : '-'}
-                      </td>
+          {expandedSections[tipo] && (
+            <CardContent>
+              {/* Desenho técnico inline se disponível */}
+              {config?.desenhoUrl && (
+                <div className="mb-4 p-3 bg-muted/30 rounded-lg flex items-center gap-4">
+                  <img
+                    src={config.desenhoUrl}
+                    alt={`Desenho técnico - ${label}`}
+                    className="h-24 object-contain"
+                    onError={(e) => {
+                      (e.target as HTMLImageElement).style.display = 'none'
+                    }}
+                  />
+                  <div className="text-sm text-muted-foreground">
+                    <p className="font-medium">{config.descricao}</p>
+                    {config.dimensaoStd && (
+                      <p>Dimensão padrão: {config.dimensaoStd} mm</p>
+                    )}
+                    {config.limiteReparo && (
+                      <p>Limite de reparo: {config.limiteReparo} mm</p>
+                    )}
+                  </div>
+                </div>
+              )}
+
+              <div className="overflow-x-auto">
+                <table className="w-full border-collapse text-sm">
+                  <thead>
+                    <tr className="bg-muted/50">
+                      {meds[0]?.subitem !== 'CONDICAO_VISUAL' ? (
+                        <>
+                          {meds.length > 1 && (
+                            <th className="border border-border px-2 py-2 text-center font-medium w-12">Nº</th>
+                          )}
+                          {meds.some(m => SUBITEM_LABELS[m.subitem] !== SUBITEM_LABELS[meds[0]?.subitem ?? '']) && (
+                            <th className="border border-border px-2 py-2 text-left font-medium">Check Item</th>
+                          )}
+                          <th className="border border-border px-2 py-2 text-center font-medium">Dim.Std</th>
+                          <th className="border border-border px-2 py-2 text-center font-medium">Lim.Rep</th>
+                          <th className="border border-border px-2 py-2 text-center font-medium">Med. LE</th>
+                          <th className="border border-border px-2 py-2 text-center font-medium">Med. LD</th>
+                          <th className="border border-border px-2 py-2 text-center font-medium">% LE</th>
+                          <th className="border border-border px-2 py-2 text-center font-medium">% LD</th>
+                          <th className="border border-border px-2 py-2 text-center font-medium">Nota</th>
+                        </>
+                      ) : (
+                        <>
+                          <th className="border border-border px-2 py-2 text-left font-medium">Check Item</th>
+                          <th className="border border-border px-2 py-2 text-center font-medium">Avaliação LE</th>
+                          <th className="border border-border px-2 py-2 text-center font-medium">Avaliação LD</th>
+                        </>
+                      )}
                     </tr>
-                  )
-                })}
-              </tbody>
-            </table>
-          </div>
+                  </thead>
+                  <tbody>
+                    {meds.map((med) => {
+                      const statusLEConfig = med.statusLE ? STATUS_CONFIG[med.statusLE as keyof typeof STATUS_CONFIG] : null
+                      const statusLDConfig = med.statusLD ? STATUS_CONFIG[med.statusLD as keyof typeof STATUS_CONFIG] : null
+                      const worstStatus = statusLEConfig?.label === 'Crítico' || statusLDConfig?.label === 'Crítico'
+                        ? 'FORA_PARAMETROS'
+                        : (statusLEConfig?.label === 'Verificar' || statusLDConfig?.label === 'Verificar')
+                          ? 'VERIFICAR'
+                          : (med.desgasteLE !== null || med.desgasteLD !== null)
+                            ? 'DENTRO_PARAMETROS'
+                            : null
+                      const notaConfig = worstStatus ? STATUS_CONFIG[worstStatus as keyof typeof STATUS_CONFIG] : null
 
-          {/* Legenda */}
-          <div className="flex flex-wrap gap-4 mt-4 text-sm">
-            <div className="flex items-center gap-2">
-              <div className="w-4 h-4 rounded bg-green-500/20 border border-green-500/30" />
-              <span>Dentro dos parâmetros (≤70%)</span>
-            </div>
-            <div className="flex items-center gap-2">
-              <div className="w-4 h-4 rounded bg-yellow-500/20 border border-yellow-500/30" />
-              <span>Verificar (70-90%)</span>
-            </div>
-            <div className="flex items-center gap-2">
-              <div className="w-4 h-4 rounded bg-red-500/20 border border-red-500/30" />
-              <span>Fora dos parâmetros (≥90%)</span>
-            </div>
-          </div>
-        </CardContent>
-      </Card>
+                      if (med.subitem === 'CONDICAO_VISUAL') {
+                        return (
+                          <tr key={`${med.tipo}-${med.subitem}-${med.instancia}`}>
+                            <td className="border border-border px-2 py-1">
+                              {SUBITEM_LABELS[med.subitem]}
+                            </td>
+                            <td className="border border-border px-2 py-1">
+                              <select
+                                value={med.avaliacaoVisualLE || ''}
+                                onChange={(e) => updateMedicao(med.tipo, med.subitem, med.instancia, 'avaliacaoVisualLE', e.target.value || null)}
+                                disabled={isEnviado}
+                                className="w-full h-8 px-2 rounded-md border border-input bg-background text-sm"
+                              >
+                                <option value="">Selecione...</option>
+                                <option value="BOM">Bom</option>
+                                <option value="REGULAR">Regular</option>
+                              </select>
+                            </td>
+                            <td className="border border-border px-2 py-1">
+                              <select
+                                value={med.avaliacaoVisualLD || ''}
+                                onChange={(e) => updateMedicao(med.tipo, med.subitem, med.instancia, 'avaliacaoVisualLD', e.target.value || null)}
+                                disabled={isEnviado}
+                                className="w-full h-8 px-2 rounded-md border border-input bg-background text-sm"
+                              >
+                                <option value="">Selecione...</option>
+                                <option value="BOM">Bom</option>
+                                <option value="REGULAR">Regular</option>
+                              </select>
+                            </td>
+                          </tr>
+                        )
+                      }
+
+                      return (
+                        <tr key={`${med.tipo}-${med.subitem}-${med.instancia}`}>
+                          {meds.length > 1 && (
+                            <td className="border border-border px-2 py-1 text-center font-medium">
+                              {med.instancia}
+                            </td>
+                          )}
+                          {meds.some(m => SUBITEM_LABELS[m.subitem] !== SUBITEM_LABELS[meds[0]?.subitem ?? '']) && (
+                            <td className="border border-border px-2 py-1 text-sm">
+                              {SUBITEM_LABELS[med.subitem]}
+                            </td>
+                          )}
+                          <td className="border border-border px-1 py-1">
+                            <Input
+                              type="number"
+                              step="0.1"
+                              value={med.dimensaoStd ?? ''}
+                              onChange={(e) => updateMedicao(med.tipo, med.subitem, med.instancia, 'dimensaoStd', e.target.value ? parseFloat(e.target.value) : null)}
+                              className="h-7 text-center text-xs w-20"
+                              disabled={isEnviado}
+                            />
+                          </td>
+                          <td className="border border-border px-1 py-1">
+                            <Input
+                              type="number"
+                              step="0.1"
+                              value={med.limiteReparo ?? ''}
+                              onChange={(e) => updateMedicao(med.tipo, med.subitem, med.instancia, 'limiteReparo', e.target.value ? parseFloat(e.target.value) : null)}
+                              className="h-7 text-center text-xs w-20"
+                              disabled={isEnviado}
+                            />
+                          </td>
+                          <td className="border border-border px-1 py-1">
+                            <Input
+                              type="number"
+                              step="0.1"
+                              value={med.medicaoLE ?? ''}
+                              onChange={(e) => updateMedicao(med.tipo, med.subitem, med.instancia, 'medicaoLE', e.target.value ? parseFloat(e.target.value) : null)}
+                              className="h-7 text-center text-xs w-20"
+                              placeholder="—"
+                              disabled={isEnviado}
+                            />
+                          </td>
+                          <td className="border border-border px-1 py-1">
+                            <Input
+                              type="number"
+                              step="0.1"
+                              value={med.medicaoLD ?? ''}
+                              onChange={(e) => updateMedicao(med.tipo, med.subitem, med.instancia, 'medicaoLD', e.target.value ? parseFloat(e.target.value) : null)}
+                              className="h-7 text-center text-xs w-20"
+                              placeholder="—"
+                              disabled={isEnviado}
+                            />
+                          </td>
+                          <td className={`border border-border px-2 py-1 text-center text-xs ${statusLEConfig ? statusLEConfig.color : ''}`}>
+                            {med.desgasteLE !== null ? `${med.desgasteLE.toFixed(1)}%` : '—'}
+                          </td>
+                          <td className={`border border-border px-2 py-1 text-center text-xs ${statusLDConfig ? statusLDConfig.color : ''}`}>
+                            {med.desgasteLD !== null ? `${med.desgasteLD.toFixed(1)}%` : '—'}
+                          </td>
+                          <td className={`border border-border px-2 py-1 text-center text-xs font-medium ${notaConfig ? notaConfig.color : ''}`}>
+                            {notaConfig ? notaConfig.label : '—'}
+                          </td>
+                        </tr>
+                      )
+                    })}
+                  </tbody>
+                </table>
+              </div>
+            </CardContent>
+          )}
+        </Card>
+      ))}
+
+      {/* Legenda */}
+      <div className="flex flex-wrap gap-4 text-sm px-2">
+        <div className="flex items-center gap-2">
+          <div className="w-4 h-4 rounded bg-green-500/20 border border-green-500/30" />
+          <span>OK (≤70%)</span>
+        </div>
+        <div className="flex items-center gap-2">
+          <div className="w-4 h-4 rounded bg-yellow-500/20 border border-yellow-500/30" />
+          <span>Verificar (70-100%)</span>
+        </div>
+        <div className="flex items-center gap-2">
+          <div className="w-4 h-4 rounded bg-red-500/20 border border-red-500/30" />
+          <span>Crítico (&gt;100%)</span>
+        </div>
+      </div>
 
       {/* Fotos dos Componentes */}
       <Card className="border-border/50">
@@ -978,7 +1191,7 @@ function EditarLaudoContent() {
                 size="sm"
                 variant="outline"
                 onClick={gerarSumarioIA}
-                disabled={gerandoSumario || medicoes.filter(m => m.medicaoLE !== null || m.medicaoLD !== null).length === 0}
+                disabled={gerandoSumario || medicoes.filter(m => m.medicaoLE !== null || m.medicaoLD !== null || m.avaliacaoVisualLE || m.avaliacaoVisualLD).length === 0}
                 className="gap-2"
               >
                 {gerandoSumario ? (
@@ -1025,7 +1238,7 @@ function EditarLaudoContent() {
           </Button>
           <Button
             onClick={finalizarLaudo}
-            disabled={enviando || medicoes.filter(m => m.medicaoLE !== null || m.medicaoLD !== null).length === 0}
+            disabled={enviando || medicoes.filter(m => m.medicaoLE !== null || m.medicaoLD !== null || m.avaliacaoVisualLE || m.avaliacaoVisualLD).length === 0}
           >
             {enviando ? (
               <Loader2 className="w-4 h-4 mr-2 animate-spin" />

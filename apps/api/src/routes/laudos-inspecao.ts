@@ -15,6 +15,17 @@ const TIPOS_COMPONENTES = [
   'RODA_MOTRIZ',
 ] as const
 
+// Sub-itens de medição
+const SUBITEMS_MEDICAO = [
+  'PASSO_CORRENTE',
+  'DIAMETRO_BUCHA',
+  'ALTURA_ELO',
+  'ALTURA_GARRA',
+  'DIAMETRO_PISTA',
+  'ALTURA_FLANGE',
+  'CONDICAO_VISUAL',
+] as const
+
 // Labels para os tipos
 const TIPO_LABELS: Record<string, string> = {
   ESTEIRA: 'Esteira',
@@ -24,6 +35,35 @@ const TIPO_LABELS: Record<string, string> = {
   RODA_GUIA: 'Roda Guia',
   RODA_MOTRIZ: 'Roda Motriz',
 }
+
+// Labels para os sub-itens
+const SUBITEM_LABELS: Record<string, string> = {
+  PASSO_CORRENTE: 'Passo da corrente',
+  DIAMETRO_BUCHA: 'Diâmetro externo da bucha',
+  ALTURA_ELO: 'Altura do elo',
+  ALTURA_GARRA: 'Altura da garra da sapata',
+  DIAMETRO_PISTA: 'Diâmetro da pista do rolete',
+  ALTURA_FLANGE: 'Altura da flange da roda guia',
+  CONDICAO_VISUAL: 'Condição visual',
+}
+
+// Configurações padrão por tipo de componente
+const CONFIGURACOES_PADRAO = [
+  // ESTEIRA - 3 sub-itens
+  { tipo: 'ESTEIRA', subitem: 'PASSO_CORRENTE', descricao: 'Passo da corrente', dimensaoStd: 1041.5, limiteReparo: 1051.0, numInstancias: 1, desenhoUrl: '/desenhos/esteira-passo.png', ordem: 1 },
+  { tipo: 'ESTEIRA', subitem: 'DIAMETRO_BUCHA', descricao: 'Diâmetro externo da bucha', dimensaoStd: 87.8, limiteReparo: 82.8, numInstancias: 1, desenhoUrl: '/desenhos/esteira-bucha.png', ordem: 2 },
+  { tipo: 'ESTEIRA', subitem: 'ALTURA_ELO', descricao: 'Altura do elo', dimensaoStd: 155.0, limiteReparo: 142.5, numInstancias: 1, desenhoUrl: '/desenhos/esteira-elo.png', ordem: 3 },
+  // SAPATA - 1 sub-item
+  { tipo: 'SAPATA', subitem: 'ALTURA_GARRA', descricao: 'Altura da garra da sapata', dimensaoStd: 50.0, limiteReparo: 24.0, numInstancias: 1, desenhoUrl: '/desenhos/sapata.png', ordem: 4 },
+  // ROLETE INFERIOR - 10 instâncias
+  { tipo: 'ROLETE_INFERIOR', subitem: 'DIAMETRO_PISTA', descricao: 'Diâmetro da pista do rolete', dimensaoStd: 260.0, limiteReparo: 240.0, numInstancias: 10, desenhoUrl: '/desenhos/rolete-inferior.png', ordem: 5 },
+  // ROLETE SUPERIOR - 2 instâncias
+  { tipo: 'ROLETE_SUPERIOR', subitem: 'DIAMETRO_PISTA', descricao: 'Diâmetro da pista do rolete', dimensaoStd: 175.0, limiteReparo: 155.0, numInstancias: 2, desenhoUrl: '/desenhos/rolete-superior.png', ordem: 6 },
+  // RODA GUIA - 1 sub-item
+  { tipo: 'RODA_GUIA', subitem: 'ALTURA_FLANGE', descricao: 'Altura da flange da roda guia', dimensaoStd: 20.0, limiteReparo: 32.5, numInstancias: 1, desenhoUrl: '/desenhos/roda-guia.png', ordem: 7 },
+  // RODA MOTRIZ - avaliação visual
+  { tipo: 'RODA_MOTRIZ', subitem: 'CONDICAO_VISUAL', descricao: 'Verificar para seguimentos', dimensaoStd: null, limiteReparo: null, numInstancias: 1, desenhoUrl: '/desenhos/roda-motriz.png', ordem: 8 },
+]
 
 // Labels para status
 const STATUS_LABELS: Record<string, string> = {
@@ -35,10 +75,14 @@ const STATUS_LABELS: Record<string, string> = {
 // Schema para medição rodante
 const medicaoRodanteSchema = z.object({
   tipo: z.enum(TIPOS_COMPONENTES),
+  subitem: z.enum(SUBITEMS_MEDICAO),
+  instancia: z.number().int().min(1).default(1),
   dimensaoStd: z.number().nullable().optional(),
   limiteReparo: z.number().nullable().optional(),
   medicaoLE: z.number().nullable().optional(),
   medicaoLD: z.number().nullable().optional(),
+  avaliacaoVisualLE: z.string().nullable().optional(), // BOM, REGULAR para Roda Motriz
+  avaliacaoVisualLD: z.string().nullable().optional(),
   observacao: z.string().optional(),
 })
 
@@ -196,7 +240,7 @@ export async function laudosInspecaoRoutes(app: FastifyInstance) {
           },
         },
         medicoesRodante: {
-          orderBy: { ordem: 'asc' },
+          orderBy: [{ ordem: 'asc' }, { tipo: 'asc' }, { subitem: 'asc' }, { instancia: 'asc' }],
         },
         fotosComponentes: {
           orderBy: { ordem: 'asc' },
@@ -231,7 +275,7 @@ export async function laudosInspecaoRoutes(app: FastifyInstance) {
           },
         },
         medicoesRodante: {
-          orderBy: { ordem: 'asc' },
+          orderBy: [{ ordem: 'asc' }, { tipo: 'asc' }, { subitem: 'asc' }, { instancia: 'asc' }],
         },
         fotosComponentes: {
           orderBy: { ordem: 'asc' },
@@ -269,7 +313,7 @@ export async function laudosInspecaoRoutes(app: FastifyInstance) {
           },
         },
         medicoesRodante: {
-          orderBy: { ordem: 'asc' },
+          orderBy: [{ ordem: 'asc' }, { tipo: 'asc' }, { subitem: 'asc' }, { instancia: 'asc' }],
         },
         fotosComponentes: {
           orderBy: { ordem: 'asc' },
@@ -319,6 +363,8 @@ export async function laudosInspecaoRoutes(app: FastifyInstance) {
 
       return {
         tipo: med.tipo as any,
+        subitem: med.subitem as any,
+        instancia: med.instancia ?? 1,
         dimensaoStd: med.dimensaoStd ?? null,
         limiteReparo: med.limiteReparo ?? null,
         medicaoLE: med.medicaoLE ?? null,
@@ -327,6 +373,8 @@ export async function laudosInspecaoRoutes(app: FastifyInstance) {
         desgasteLD: calcLD.desgaste,
         statusLE: calcLE.status as any,
         statusLD: calcLD.status as any,
+        avaliacaoVisualLE: med.avaliacaoVisualLE ?? null,
+        avaliacaoVisualLD: med.avaliacaoVisualLD ?? null,
         observacao: med.observacao || null,
         ordem: index,
       }
@@ -370,7 +418,7 @@ export async function laudosInspecaoRoutes(app: FastifyInstance) {
           },
         },
         medicoesRodante: {
-          orderBy: { ordem: 'asc' },
+          orderBy: [{ ordem: 'asc' }, { tipo: 'asc' }, { subitem: 'asc' }, { instancia: 'asc' }],
         },
         fotosComponentes: {
           orderBy: { ordem: 'asc' },
@@ -411,6 +459,8 @@ export async function laudosInspecaoRoutes(app: FastifyInstance) {
         return {
           laudoInspecaoId: id,
           tipo: med.tipo as any,
+          subitem: med.subitem as any,
+          instancia: med.instancia ?? 1,
           dimensaoStd: med.dimensaoStd ?? null,
           limiteReparo: med.limiteReparo ?? null,
           medicaoLE: med.medicaoLE ?? null,
@@ -419,6 +469,8 @@ export async function laudosInspecaoRoutes(app: FastifyInstance) {
           desgasteLD: calcLD.desgaste,
           statusLE: calcLE.status as any,
           statusLD: calcLD.status as any,
+          avaliacaoVisualLE: med.avaliacaoVisualLE ?? null,
+          avaliacaoVisualLD: med.avaliacaoVisualLD ?? null,
           observacao: med.observacao || null,
           ordem: index,
         }
@@ -474,7 +526,7 @@ export async function laudosInspecaoRoutes(app: FastifyInstance) {
           },
         },
         medicoesRodante: {
-          orderBy: { ordem: 'asc' },
+          orderBy: [{ ordem: 'asc' }, { tipo: 'asc' }, { subitem: 'asc' }, { instancia: 'asc' }],
         },
         fotosComponentes: {
           orderBy: { ordem: 'asc' },
@@ -525,7 +577,7 @@ export async function laudosInspecaoRoutes(app: FastifyInstance) {
           },
         },
         medicoesRodante: {
-          orderBy: { ordem: 'asc' },
+          orderBy: [{ ordem: 'asc' }, { tipo: 'asc' }, { subitem: 'asc' }, { instancia: 'asc' }],
         },
         fotosComponentes: {
           orderBy: { ordem: 'asc' },
@@ -584,10 +636,14 @@ export async function laudosInspecaoRoutes(app: FastifyInstance) {
       equipamento: string
       medicoes: Array<{
         tipo: string
+        subitem?: string
+        instancia?: number
         desgasteLE: number | null
         desgasteLD: number | null
         statusLE: string | null
         statusLD: string | null
+        avaliacaoVisualLE?: string | null
+        avaliacaoVisualLD?: string | null
       }>
       sumarioAtual?: string
     }
@@ -601,12 +657,20 @@ export async function laudosInspecaoRoutes(app: FastifyInstance) {
 
       // Preparar dados das medições para o prompt
       const medicoesTexto = medicoes
-        .filter(m => m.desgasteLE !== null || m.desgasteLD !== null)
+        .filter(m => m.desgasteLE !== null || m.desgasteLD !== null || m.avaliacaoVisualLE || m.avaliacaoVisualLD)
         .map(m => {
           const tipoLabel = TIPO_LABELS[m.tipo] || m.tipo
+          const subitemLabel = m.subitem ? (SUBITEM_LABELS[m.subitem] || m.subitem) : ''
+          const instanciaStr = m.instancia && m.instancia > 1 ? ` #${m.instancia}` : ''
           const statusLELabel = m.statusLE ? STATUS_LABELS[m.statusLE] : 'N/A'
           const statusLDLabel = m.statusLD ? STATUS_LABELS[m.statusLD] : 'N/A'
-          return `- ${tipoLabel}: LE ${m.desgasteLE?.toFixed(1) || 'N/A'}% (${statusLELabel}), LD ${m.desgasteLD?.toFixed(1) || 'N/A'}% (${statusLDLabel})`
+
+          // Para avaliação visual (Roda Motriz)
+          if (m.avaliacaoVisualLE || m.avaliacaoVisualLD) {
+            return `- ${tipoLabel}${instanciaStr} (${subitemLabel}): LE ${m.avaliacaoVisualLE || 'N/A'}, LD ${m.avaliacaoVisualLD || 'N/A'}`
+          }
+
+          return `- ${tipoLabel}${instanciaStr} (${subitemLabel}): LE ${m.desgasteLE?.toFixed(1) || 'N/A'}% (${statusLELabel}), LD ${m.desgasteLD?.toFixed(1) || 'N/A'}% (${statusLDLabel})`
         })
         .join('\n')
 
@@ -678,7 +742,7 @@ Retorne APENAS o texto do sumário, sem títulos ou explicações.`
           },
         },
         medicoesRodante: {
-          orderBy: { ordem: 'asc' },
+          orderBy: [{ ordem: 'asc' }, { tipo: 'asc' }, { subitem: 'asc' }, { instancia: 'asc' }],
         },
         fotosComponentes: {
           orderBy: [{ tipo: 'asc' }, { lado: 'asc' }],
@@ -718,6 +782,9 @@ Retorne APENAS o texto do sumário, sem títulos ou explicações.`
       medicoes: laudo.medicoesRodante.map((med) => ({
         tipo: med.tipo,
         tipoLabel: TIPO_LABELS[med.tipo],
+        subitem: med.subitem,
+        subitemLabel: SUBITEM_LABELS[med.subitem] || med.subitem,
+        instancia: med.instancia,
         dimensaoStd: med.dimensaoStd ? Number(med.dimensaoStd) : null,
         limiteReparo: med.limiteReparo ? Number(med.limiteReparo) : null,
         medicaoLE: med.medicaoLE ? Number(med.medicaoLE) : null,
@@ -728,6 +795,8 @@ Retorne APENAS o texto do sumário, sem títulos ou explicações.`
         statusLELabel: med.statusLE ? STATUS_LABELS[med.statusLE] : null,
         statusLD: med.statusLD,
         statusLDLabel: med.statusLD ? STATUS_LABELS[med.statusLD] : null,
+        avaliacaoVisualLE: med.avaliacaoVisualLE,
+        avaliacaoVisualLD: med.avaliacaoVisualLD,
         observacao: med.observacao,
       })),
       fotos: laudo.fotosComponentes.map((foto) => ({
@@ -782,8 +851,8 @@ Retorne APENAS o texto do sumário, sem títulos ou explicações.`
           },
         },
         medicoesRodante: {
-          select: { id: true, tipo: true, desgasteLE: true, desgasteLD: true, statusLE: true, statusLD: true },
-          orderBy: { ordem: 'asc' },
+          select: { id: true, tipo: true, subitem: true, instancia: true, desgasteLE: true, desgasteLD: true, statusLE: true, statusLD: true, avaliacaoVisualLE: true, avaliacaoVisualLD: true },
+          orderBy: [{ tipo: 'asc' }, { subitem: 'asc' }, { instancia: 'asc' }],
         },
       },
       orderBy: { dataInspecao: 'desc' },
@@ -889,7 +958,7 @@ Retorne APENAS o texto do sumário, sem títulos ou explicações.`
     return resultado
   })
 
-  // Obter valores padrão para componentes por equipamento
+  // Obter valores padrão para componentes por equipamento (legado)
   app.get('/valores-padrao/:equipamento', async (request) => {
     const { equipamento } = request.params as { equipamento: string }
 
@@ -905,5 +974,329 @@ Retorne APENAS o texto do sumário, sem títulos ou explicações.`
     }
 
     return valoresPadrao
+  })
+
+  // Obter configurações de medição completas (nova estrutura)
+  app.get('/configuracoes-medicao', async (request) => {
+    const { equipamento } = request.query as { equipamento?: string }
+
+    // No futuro, podemos buscar do banco de dados por equipamento
+    // Por enquanto, retorna as configurações padrão
+    return {
+      configuracoes: CONFIGURACOES_PADRAO,
+      tipoLabels: TIPO_LABELS,
+      subitemLabels: SUBITEM_LABELS,
+    }
+  })
+
+  // Gerar medições iniciais baseado nas configurações padrão
+  app.get('/medicoes-iniciais', async (request) => {
+    const { equipamento } = request.query as { equipamento?: string }
+
+    // Gera array de medições vazias baseado nas configurações padrão
+    const medicoesIniciais: Array<{
+      tipo: string
+      subitem: string
+      instancia: number
+      descricao: string
+      dimensaoStd: number | null
+      limiteReparo: number | null
+      medicaoLE: number | null
+      medicaoLD: number | null
+      avaliacaoVisualLE: string | null
+      avaliacaoVisualLD: string | null
+      desenhoUrl: string | null
+    }> = []
+
+    CONFIGURACOES_PADRAO.forEach(config => {
+      for (let i = 1; i <= config.numInstancias; i++) {
+        medicoesIniciais.push({
+          tipo: config.tipo,
+          subitem: config.subitem,
+          instancia: i,
+          descricao: config.descricao,
+          dimensaoStd: config.dimensaoStd,
+          limiteReparo: config.limiteReparo,
+          medicaoLE: null,
+          medicaoLD: null,
+          avaliacaoVisualLE: null,
+          avaliacaoVisualLD: null,
+          desenhoUrl: config.desenhoUrl,
+        })
+      }
+    })
+
+    return {
+      medicoes: medicoesIniciais,
+      tipoLabels: TIPO_LABELS,
+      subitemLabels: SUBITEM_LABELS,
+    }
+  })
+
+  // Mapeamento de tipo antigo para subitem padrão
+  const TIPO_TO_SUBITEM: Record<string, string> = {
+    ESTEIRA: 'PASSO_CORRENTE',
+    SAPATA: 'ALTURA_GARRA',
+    ROLETE_INFERIOR: 'DIAMETRO_PISTA',
+    ROLETE_SUPERIOR: 'DIAMETRO_PISTA',
+    RODA_GUIA: 'ALTURA_FLANGE',
+    RODA_MOTRIZ: 'CONDICAO_VISUAL',
+  }
+
+  // Migrar laudos existentes para nova estrutura
+  app.post('/migrar-estrutura', async (request, reply) => {
+    try {
+      // Buscar todos os laudos com suas medições
+      const laudos = await db.laudoInspecao.findMany({
+        include: {
+          medicoesRodante: true,
+        },
+      })
+
+      let laudosMigrados = 0
+      let laudosJaMigrados = 0
+      const erros: string[] = []
+
+      for (const laudo of laudos) {
+        try {
+          // Verificar se o laudo já está na nova estrutura
+          // Um laudo migrado terá mais medições (por causa das instâncias múltiplas)
+          // e terá subitems diferentes por tipo
+          const temEstruturaAntiga = laudo.medicoesRodante.length > 0 &&
+            laudo.medicoesRodante.some(m => !m.subitem) ||
+            laudo.medicoesRodante.length < 18 // Nova estrutura tem pelo menos 18 linhas (3+1+10+2+1+1)
+
+          if (!temEstruturaAntiga && laudo.medicoesRodante.length >= 18) {
+            laudosJaMigrados++
+            continue
+          }
+
+          // Salvar medições antigas para tentar reaproveitar valores
+          const medicoesAntigas = [...laudo.medicoesRodante]
+
+          // Criar mapa de medições antigas por tipo para reaproveitar valores
+          const valoresPorTipo: Record<string, { medicaoLE: number | null; medicaoLD: number | null }> = {}
+          medicoesAntigas.forEach(med => {
+            if (!valoresPorTipo[med.tipo]) {
+              valoresPorTipo[med.tipo] = {
+                medicaoLE: med.medicaoLE ? Number(med.medicaoLE) : null,
+                medicaoLD: med.medicaoLD ? Number(med.medicaoLD) : null,
+              }
+            }
+          })
+
+          // Deletar medições antigas
+          await db.medicaoRodante.deleteMany({
+            where: { laudoInspecaoId: laudo.id },
+          })
+
+          // Criar novas medições na estrutura correta
+          let ordem = 0
+          const novasMedicoes: Array<{
+            laudoInspecaoId: string
+            tipo: any
+            subitem: any
+            instancia: number
+            dimensaoStd: number | null
+            limiteReparo: number | null
+            medicaoLE: number | null
+            medicaoLD: number | null
+            desgasteLE: number | null
+            desgasteLD: number | null
+            statusLE: any
+            statusLD: any
+            avaliacaoVisualLE: string | null
+            avaliacaoVisualLD: string | null
+            observacao: string | null
+            ordem: number
+          }> = []
+
+          CONFIGURACOES_PADRAO.forEach(config => {
+            for (let i = 1; i <= config.numInstancias; i++) {
+              // Tentar reaproveitar valores antigos apenas para a primeira instância
+              let medicaoLE: number | null = null
+              let medicaoLD: number | null = null
+
+              if (i === 1 && valoresPorTipo[config.tipo]) {
+                medicaoLE = valoresPorTipo[config.tipo].medicaoLE
+                medicaoLD = valoresPorTipo[config.tipo].medicaoLD
+              }
+
+              // Calcular desgaste se houver medições
+              const calcLE = calcularDesgaste(config.dimensaoStd, config.limiteReparo, medicaoLE)
+              const calcLD = calcularDesgaste(config.dimensaoStd, config.limiteReparo, medicaoLD)
+
+              novasMedicoes.push({
+                laudoInspecaoId: laudo.id,
+                tipo: config.tipo as any,
+                subitem: config.subitem as any,
+                instancia: i,
+                dimensaoStd: config.dimensaoStd,
+                limiteReparo: config.limiteReparo,
+                medicaoLE,
+                medicaoLD,
+                desgasteLE: calcLE.desgaste,
+                desgasteLD: calcLD.desgaste,
+                statusLE: calcLE.status as any,
+                statusLD: calcLD.status as any,
+                avaliacaoVisualLE: config.tipo === 'RODA_MOTRIZ' ? 'BOM' : null,
+                avaliacaoVisualLD: config.tipo === 'RODA_MOTRIZ' ? 'BOM' : null,
+                observacao: null,
+                ordem: ordem++,
+              })
+            }
+          })
+
+          // Inserir novas medições
+          await db.medicaoRodante.createMany({
+            data: novasMedicoes,
+          })
+
+          laudosMigrados++
+        } catch (error) {
+          erros.push(`Erro ao migrar laudo ${laudo.id}: ${error}`)
+        }
+      }
+
+      return {
+        sucesso: true,
+        totalLaudos: laudos.length,
+        laudosMigrados,
+        laudosJaMigrados,
+        erros: erros.length > 0 ? erros : undefined,
+      }
+    } catch (error) {
+      console.error('[Migração] Erro:', error)
+      return reply.status(500).send({
+        sucesso: false,
+        erro: `Erro na migração: ${error}`,
+      })
+    }
+  })
+
+  // Migrar um laudo específico
+  app.post('/:id/migrar-estrutura', async (request, reply) => {
+    const { id } = request.params as { id: string }
+
+    try {
+      const laudo = await db.laudoInspecao.findUnique({
+        where: { id },
+        include: { medicoesRodante: true },
+      })
+
+      if (!laudo) {
+        return reply.status(404).send({ error: 'Laudo não encontrado' })
+      }
+
+      // Salvar medições antigas
+      const medicoesAntigas = [...laudo.medicoesRodante]
+
+      // Criar mapa de medições antigas por tipo
+      const valoresPorTipo: Record<string, { medicaoLE: number | null; medicaoLD: number | null }> = {}
+      medicoesAntigas.forEach(med => {
+        if (!valoresPorTipo[med.tipo]) {
+          valoresPorTipo[med.tipo] = {
+            medicaoLE: med.medicaoLE ? Number(med.medicaoLE) : null,
+            medicaoLD: med.medicaoLD ? Number(med.medicaoLD) : null,
+          }
+        }
+      })
+
+      // Deletar medições antigas
+      await db.medicaoRodante.deleteMany({
+        where: { laudoInspecaoId: id },
+      })
+
+      // Criar novas medições
+      let ordem = 0
+      const novasMedicoes: Array<{
+        laudoInspecaoId: string
+        tipo: any
+        subitem: any
+        instancia: number
+        dimensaoStd: number | null
+        limiteReparo: number | null
+        medicaoLE: number | null
+        medicaoLD: number | null
+        desgasteLE: number | null
+        desgasteLD: number | null
+        statusLE: any
+        statusLD: any
+        avaliacaoVisualLE: string | null
+        avaliacaoVisualLD: string | null
+        observacao: string | null
+        ordem: number
+      }> = []
+
+      CONFIGURACOES_PADRAO.forEach(config => {
+        for (let i = 1; i <= config.numInstancias; i++) {
+          let medicaoLE: number | null = null
+          let medicaoLD: number | null = null
+
+          if (i === 1 && valoresPorTipo[config.tipo]) {
+            medicaoLE = valoresPorTipo[config.tipo].medicaoLE
+            medicaoLD = valoresPorTipo[config.tipo].medicaoLD
+          }
+
+          const calcLE = calcularDesgaste(config.dimensaoStd, config.limiteReparo, medicaoLE)
+          const calcLD = calcularDesgaste(config.dimensaoStd, config.limiteReparo, medicaoLD)
+
+          novasMedicoes.push({
+            laudoInspecaoId: id,
+            tipo: config.tipo as any,
+            subitem: config.subitem as any,
+            instancia: i,
+            dimensaoStd: config.dimensaoStd,
+            limiteReparo: config.limiteReparo,
+            medicaoLE,
+            medicaoLD,
+            desgasteLE: calcLE.desgaste,
+            desgasteLD: calcLD.desgaste,
+            statusLE: calcLE.status as any,
+            statusLD: calcLD.status as any,
+            avaliacaoVisualLE: config.tipo === 'RODA_MOTRIZ' ? 'BOM' : null,
+            avaliacaoVisualLD: config.tipo === 'RODA_MOTRIZ' ? 'BOM' : null,
+            observacao: null,
+            ordem: ordem++,
+          })
+        }
+      })
+
+      await db.medicaoRodante.createMany({
+        data: novasMedicoes,
+      })
+
+      // Buscar laudo atualizado
+      const laudoAtualizado = await db.laudoInspecao.findUnique({
+        where: { id },
+        include: {
+          inspetor: { select: { id: true, name: true } },
+          visitaTecnica: {
+            include: {
+              cliente: { select: { id: true, nome: true, cidade: true, estado: true } },
+            },
+          },
+          medicoesRodante: {
+            orderBy: [{ ordem: 'asc' }, { tipo: 'asc' }, { subitem: 'asc' }, { instancia: 'asc' }],
+          },
+          fotosComponentes: {
+            orderBy: { ordem: 'asc' },
+          },
+        },
+      })
+
+      return {
+        sucesso: true,
+        medicoesAntigas: medicoesAntigas.length,
+        medicoesNovas: novasMedicoes.length,
+        laudo: laudoAtualizado,
+      }
+    } catch (error) {
+      console.error('[Migração Individual] Erro:', error)
+      return reply.status(500).send({
+        sucesso: false,
+        erro: `Erro na migração: ${error}`,
+      })
+    }
   })
 }

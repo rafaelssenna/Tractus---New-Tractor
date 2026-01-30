@@ -140,6 +140,21 @@ enum StatusMedicao {
   FORA_PARAMETROS
 }
 
+enum SubitemMedicao {
+  // Esteira
+  PASSO_CORRENTE
+  DIAMETRO_BUCHA
+  ALTURA_ELO
+  // Sapata
+  ALTURA_GARRA
+  // Roletes (Inferior e Superior)
+  DIAMETRO_PISTA
+  // Roda Guia
+  ALTURA_FLANGE
+  // Roda Motriz
+  CONDICAO_VISUAL
+}
+
 // ==========================================
 // USUÁRIOS E AUTENTICAÇÃO
 // ==========================================
@@ -810,6 +825,12 @@ model MedicaoRodante {
   // Tipo do componente
   tipo              TipoComponenteRodante
 
+  // Sub-item do componente (passo da corrente, diâmetro da pista, etc.)
+  subitem           SubitemMedicao      @default(DIAMETRO_PISTA)
+
+  // Instância (1-10 para roletes inferiores, 1-2 para superiores, etc.)
+  instancia         Int                 @default(1)
+
   // Dimensões padrão e limites (em mm)
   dimensaoStd       Decimal?            @db.Decimal(8, 2)  // Dimensão padrão do fabricante
   limiteReparo      Decimal?            @db.Decimal(8, 2)  // Limite de reparo
@@ -819,12 +840,16 @@ model MedicaoRodante {
   medicaoLD         Decimal?            @db.Decimal(8, 2)  // Medição lado direito
 
   // Percentual de desgaste calculado
-  desgasteLE        Decimal?            @db.Decimal(5, 2)  // % desgaste lado esquerdo
-  desgasteLD        Decimal?            @db.Decimal(5, 2)  // % desgaste lado direito
+  desgasteLE        Decimal?            @db.Decimal(8, 2)  // % desgaste lado esquerdo
+  desgasteLD        Decimal?            @db.Decimal(8, 2)  // % desgaste lado direito
 
   // Status da medição
   statusLE          StatusMedicao?
   statusLD          StatusMedicao?
+
+  // Para avaliação visual (Roda Motriz)
+  avaliacaoVisualLE String?             // "BOM", "REGULAR"
+  avaliacaoVisualLD String?
 
   // Observação específica do componente
   observacao        String?             @db.Text
@@ -835,7 +860,7 @@ model MedicaoRodante {
   createdAt         DateTime            @default(now())
   updatedAt         DateTime            @updatedAt
 
-  @@unique([laudoInspecaoId, tipo])
+  @@unique([laudoInspecaoId, tipo, subitem, instancia])
   @@map("medicoes_rodante")
 }
 
@@ -863,6 +888,42 @@ model FotoComponenteRodante {
   createdAt         DateTime            @default(now())
 
   @@map("fotos_componente_rodante")
+}
+
+// Configurações padrão de medição por equipamento
+model ConfiguracaoMedicao {
+  id            String              @id @default(cuid())
+
+  // Equipamento ou "PADRAO" para configuração genérica
+  equipamento   String              @default("PADRAO")
+
+  // Tipo do componente
+  tipo          TipoComponenteRodante
+
+  // Sub-item do componente
+  subitem       SubitemMedicao
+
+  // Descrição do check item (ex: "Passo da corrente")
+  descricao     String
+
+  // Dimensões padrão (em mm)
+  dimensaoStd   Decimal?            @db.Decimal(8, 2)
+  limiteReparo  Decimal?            @db.Decimal(8, 2)
+
+  // Número de instâncias (10 para rolete inferior, 2 para superior, etc.)
+  numInstancias Int                 @default(1)
+
+  // URL do desenho técnico
+  desenhoUrl    String?
+
+  // Ordem de exibição
+  ordem         Int                 @default(0)
+
+  createdAt     DateTime            @default(now())
+  updatedAt     DateTime            @updatedAt
+
+  @@unique([equipamento, tipo, subitem])
+  @@map("configuracoes_medicao")
 }
 
 // ==========================================
