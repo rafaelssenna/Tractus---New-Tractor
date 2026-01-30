@@ -38,11 +38,6 @@ const rolePermissions: Record<string, string[]> = {
     '/comercial/despesas',
     '/comercial/minhas-solicitacoes',
   ],
-  TECNICO: [
-    '/dashboard',
-    '/producao',
-    '/qualidade',
-  ],
   INSPETOR: [
     '/dashboard',
     '/producao',

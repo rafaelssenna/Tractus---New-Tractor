@@ -48,7 +48,7 @@ async function main() {
       email: 'joviano@newtractor.com.br',
       name: 'Joviano Rodrigues',
       password: '123456',
-      role: 'TECNICO',
+      role: 'INSPETOR',
     },
   })
 

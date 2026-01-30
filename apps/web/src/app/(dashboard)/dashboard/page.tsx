@@ -24,7 +24,7 @@ export default function DashboardPage() {
     case 'COMERCIAL':
       return <ComercialDashboard />
 
-    case 'TECNICO':
+    case 'INSPETOR':
     case 'PRODUCAO':
     case 'QUALIDADE':
       return <InspetorDashboard />

@@ -43,7 +43,6 @@ const roles = [
   { value: 'DIRETOR', label: 'Diretor', color: 'bg-purple-500/20 text-purple-400' },
   { value: 'COMERCIAL', label: 'Comercial', color: 'bg-blue-500/20 text-blue-400' },
   { value: 'INSPETOR', label: 'Inspetor', color: 'bg-cyan-500/20 text-cyan-400' },
-  { value: 'TECNICO', label: 'Técnico', color: 'bg-teal-500/20 text-teal-400' },
   { value: 'ORCAMENTO', label: 'Orçamento', color: 'bg-yellow-500/20 text-yellow-400' },
   { value: 'FINANCEIRO', label: 'Financeiro', color: 'bg-green-500/20 text-green-400' },
   { value: 'PCP', label: 'PCP', color: 'bg-orange-500/20 text-orange-400' },
