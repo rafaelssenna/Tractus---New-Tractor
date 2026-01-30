@@ -19,6 +19,7 @@ enum Role {
   DIRETOR
   COMERCIAL
   INSPETOR
+  TECNICO // Temporário - será removido após migração
   ORCAMENTO
   FINANCEIRO
   PCP
