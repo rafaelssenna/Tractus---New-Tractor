@@ -219,6 +219,9 @@ export async function visitasTecnicasRoutes(app: FastifyInstance) {
         inspetor: {
           select: { id: true, name: true, photo: true }
         },
+        laudoInspecao: {
+          select: { id: true, status: true }
+        },
       },
       orderBy: { dataVisita: 'asc' },
     })

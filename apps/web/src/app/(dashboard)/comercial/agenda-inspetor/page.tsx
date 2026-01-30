@@ -56,6 +56,10 @@ interface VisitaInspecao {
       photo: string | null
     }
   }
+  laudoInspecao?: {
+    id: string
+    status: 'RASCUNHO' | 'ENVIADO'
+  } | null
 }
 
 interface AgendaDia {
@@ -429,35 +433,16 @@ export default function AgendaInspetorPage() {
                 Cancelar
               </Button>
             )}
-            {/* Botão do Inspetor: Marcar Realizada - para visitas com data (PENDENTE ou CONFIRMADA) */}
-            {isInspetor && visita.dataVisita && (visita.status === 'PENDENTE' || visita.status === 'CONFIRMADA') && (
+            {/* Botão do Inspetor: Fazer Laudo - só aparece se não tiver laudo finalizado */}
+            {isInspetor && visita.dataVisita && visita.status !== 'CANCELADA' && visita.laudoInspecao?.status !== 'ENVIADO' && (
               <Button
                 size="sm"
                 variant="default"
-                className="bg-green-600 hover:bg-green-700"
-                onClick={() => handleRealizar(visita.id)}
-                disabled={isLoading}
-              >
-                {isLoading ? (
-                  <Loader2 className="w-4 h-4 animate-spin" />
-                ) : (
-                  <>
-                    <CheckCircle className="w-4 h-4 mr-1" />
-                    Marcar Realizada
-                  </>
-                )}
-              </Button>
-            )}
-            {/* Botão do Inspetor: Fazer Laudo - para visitas com data */}
-            {isInspetor && visita.dataVisita && visita.status !== 'CANCELADA' && (
-              <Button
-                size="sm"
-                variant="outline"
-                className="text-primary hover:bg-primary/10"
+                className="bg-primary hover:bg-primary/90"
                 onClick={() => router.push(`/comercial/laudos-inspetor/editar?visita=${visita.id}`)}
               >
                 <ClipboardCheck className="w-4 h-4 mr-1" />
-                Fazer Laudo
+                {visita.laudoInspecao?.status === 'RASCUNHO' ? 'Continuar Laudo' : 'Fazer Laudo'}
               </Button>
             )}
           </div>

@@ -370,7 +370,7 @@ export async function laudosInspecaoRoutes(app: FastifyInstance) {
       return reply.status(400).send({ error: 'Adicione pelo menos um componente antes de enviar' })
     }
 
-    // Atualizar status
+    // Atualizar status do laudo e marcar visita como REALIZADA
     const laudoAtualizado = await db.laudoInspecao.update({
       where: { id },
       data: {
@@ -392,6 +392,12 @@ export async function laudosInspecaoRoutes(app: FastifyInstance) {
           orderBy: { ordem: 'asc' },
         },
       },
+    })
+
+    // Marcar a visita técnica como REALIZADA automaticamente
+    await db.visitaTecnica.update({
+      where: { id: laudo.visitaTecnicaId },
+      data: { status: 'REALIZADA' },
     })
 
     return laudoAtualizado
