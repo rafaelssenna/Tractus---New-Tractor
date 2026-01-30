@@ -94,6 +94,10 @@ export function Sidebar() {
   // Filtrar menus baseado no perfil do usuário
   let menuItems = allMenuItems.filter(item => {
     if (!user) return false
+    // Se tem submenu, verificar se pode acessar pelo menos um item do submenu
+    if (item.submenu) {
+      return item.submenu.some(sub => canAccessRoute(user.role, sub.href))
+    }
     return canAccessRoute(user.role, item.href)
   }).map(item => {
     // Filtrar submenus também
@@ -116,10 +120,18 @@ export function Sidebar() {
         ]
       }
 
-      // Para admin/diretor, esconder "Laudos do Inspetor" (só aparece pro TECNICO)
+      // Para admin/diretor, esconder "Laudos do Inspetor" (só aparece pro INSPETOR)
       if (isGestor) {
         filteredSubmenu = filteredSubmenu.filter(sub =>
           sub.href !== '/comercial/laudos-inspetor'
+        )
+      }
+
+      // Para inspetor, mostrar apenas "Agenda do Inspetor" e "Laudos do Inspetor"
+      if (isInspetor) {
+        filteredSubmenu = filteredSubmenu.filter(sub =>
+          sub.href === '/comercial/agenda-inspetor' ||
+          sub.href === '/comercial/laudos-inspetor'
         )
       }
 

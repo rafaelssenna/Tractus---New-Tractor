@@ -42,7 +42,13 @@ const rolePermissions: Record<string, string[]> = {
     '/dashboard',
     '/producao',
     '/qualidade',
+  ],
+  INSPETOR: [
+    '/dashboard',
+    '/producao',
+    '/qualidade',
     '/comercial/agenda-inspetor',
+    '/comercial/laudos-inspetor',
   ],
   PCP: [
     '/dashboard',
