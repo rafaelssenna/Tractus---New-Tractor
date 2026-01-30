@@ -158,8 +158,8 @@ export default function LaudosInspetorPage() {
         <head>
           <title>Inspeção de Desgaste - ${data.numero}</title>
           <style>
-            * { margin: 0; padding: 0; box-sizing: border-box; }
-            body { font-family: Arial, sans-serif; padding: 20px; color: #333; font-size: 11px; }
+            * { margin: 0; padding: 0; box-sizing: border-box; -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
+            body { font-family: Arial, sans-serif; padding: 20px; color: #333; font-size: 11px; -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
             .header { display: flex; align-items: center; justify-content: space-between; border-bottom: 2px solid #000; padding-bottom: 15px; margin-bottom: 20px; }
             .logo { height: 50px; width: auto; }
             .title { text-align: center; flex: 1; }
@@ -174,9 +174,9 @@ export default function LaudosInspetorPage() {
             .measurements-table th, .measurements-table td { border: 1px solid #000; padding: 6px 4px; text-align: center; font-size: 10px; }
             .measurements-table th { background: #1e3a5f; color: white; font-weight: bold; }
             .measurements-table td:first-child { text-align: left; font-weight: bold; padding-left: 8px; }
-            .status-ok { background: #d4edda; color: #155724; }
-            .status-verificar { background: #fff3cd; color: #856404; }
-            .status-fora { background: #f8d7da; color: #721c24; }
+            .status-ok { background: #d4edda !important; color: #155724 !important; -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
+            .status-verificar { background: #fff3cd !important; color: #856404 !important; -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
+            .status-fora { background: #f8d7da !important; color: #721c24 !important; -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
             .photos-section { page-break-before: always; }
             .photos { display: grid; grid-template-columns: repeat(2, 1fr); gap: 15px; margin-top: 15px; }
             .photo-item { border: 1px solid #ddd; padding: 8px; }
@@ -190,8 +190,9 @@ export default function LaudosInspetorPage() {
             .legend-item { display: flex; align-items: center; gap: 5px; }
             .legend-color { width: 12px; height: 12px; border: 1px solid #999; }
             @media print {
-              body { padding: 10px; }
+              body { padding: 10px; -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
               .photos-section { page-break-before: always; }
+              * { -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
             }
           </style>
         </head>
