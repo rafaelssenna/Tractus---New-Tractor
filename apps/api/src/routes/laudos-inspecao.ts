@@ -98,17 +98,18 @@ function calcularDesgaste(dimensaoStd: number | null, limiteReparo: number | nul
   }
 }
 
-// Gerar número da visita: DD/MM/AAAA-NNNN
+// Gerar número da visita: DD/MM/AAAA-NNNN (sequência global)
 async function gerarNumeroVisita(dataVisita: Date): Promise<string> {
   const dia = String(dataVisita.getDate()).padStart(2, '0')
   const mes = String(dataVisita.getMonth() + 1).padStart(2, '0')
   const ano = dataVisita.getFullYear()
   const dataFormatada = `${dia}/${mes}/${ano}`
 
+  // Contar todas as visitas que já têm número (sequência global)
   const count = await db.visitaTecnica.count({
     where: {
       numero: {
-        startsWith: dataFormatada,
+        not: null,
       },
     },
   })
