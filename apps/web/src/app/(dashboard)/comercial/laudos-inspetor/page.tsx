@@ -182,9 +182,9 @@ export default function LaudosInspetorPage() {
             .photo-item { border: 1px solid #ddd; padding: 8px; }
             .photo-item img { width: 100%; height: 200px; object-fit: cover; }
             .photo-item .label { background: #1e3a5f; color: white; padding: 4px 8px; font-size: 10px; margin-top: 8px; text-align: center; }
-            .summary-section { margin-top: 20px; padding: 15px; border: 1px solid #ddd; background: #f9f9f9; }
-            .summary-section h3 { font-size: 12px; margin-bottom: 10px; color: #1e3a5f; }
-            .summary-section p { font-size: 11px; line-height: 1.5; white-space: pre-wrap; }
+            .summary-section { margin-top: 15px; padding: 10px; border: 1px solid #ddd; background: #f9f9f9; }
+            .summary-section h3 { font-size: 11px; margin-bottom: 5px; color: #1e3a5f; }
+            .summary-section p { font-size: 10px; line-height: 1.4; white-space: pre-wrap; margin: 0; }
             .footer { margin-top: 30px; padding-top: 15px; border-top: 1px solid #ddd; font-size: 9px; color: #666; text-align: center; }
             .legend { margin-top: 10px; display: flex; gap: 20px; font-size: 9px; }
             .legend-item { display: flex; align-items: center; gap: 5px; }
