@@ -269,6 +269,13 @@ export async function visitasTecnicasRoutes(app: FastifyInstance) {
             user: { select: { id: true, name: true, email: true, photo: true } }
           }
         },
+        laudoInspecao: {
+          include: {
+            componentes: {
+              orderBy: { ordem: 'asc' }
+            }
+          }
+        },
       },
     })
 
