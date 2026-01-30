@@ -143,8 +143,8 @@ export function Sidebar() {
     return item
   })
 
-  // Para vendedoras, transformar submenu do Comercial em itens diretos
-  if (isVendedora) {
+  // Para vendedoras e inspetores, transformar submenu do Comercial em itens diretos
+  if (isVendedora || isInspetor) {
     const newMenuItems: MenuItem[] = []
     menuItems.forEach(item => {
       if (item.href === '/comercial' && item.submenu) {
