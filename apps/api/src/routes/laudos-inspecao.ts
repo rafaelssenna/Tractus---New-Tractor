@@ -82,10 +82,11 @@ function calcularDesgaste(dimensaoStd: number | null, limiteReparo: number | nul
   const percentual = (desgasteAtual / faixaTotal) * 100
 
   // Determinar status
+  // ≤70% = verde (ok), 70-100% = amarelo (verificar), >100% = vermelho (fora do parâmetro)
   let status: string
   if (percentual <= 70) {
     status = 'DENTRO_PARAMETROS'
-  } else if (percentual <= 90) {
+  } else if (percentual <= 100) {
     status = 'VERIFICAR'
   } else {
     status = 'FORA_PARAMETROS'
