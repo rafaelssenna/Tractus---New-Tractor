@@ -88,7 +88,7 @@ export function Sidebar() {
   const [expandedMenus, setExpandedMenus] = useState<string[]>([])
   const { user, logout, isAdmin, isDiretor } = useAuth()
   const isVendedora = user?.role === 'COMERCIAL'
-  const isInspetor = user?.role === 'TECNICO'
+  const isInspetor = user?.role === 'INSPETOR'
   const isGestor = isAdmin || isDiretor
 
   // Filtrar menus baseado no perfil do usuário

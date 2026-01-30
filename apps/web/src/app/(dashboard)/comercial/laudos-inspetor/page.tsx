@@ -95,7 +95,7 @@ export default function LaudosInspetorPage() {
   const { user, isAdmin, isDiretor } = useAuth()
 
   const isGestor = isAdmin || isDiretor
-  const isInspetor = user?.role === 'TECNICO'
+  const isInspetor = user?.role === 'INSPETOR'
 
   const [diasAgendados, setDiasAgendados] = useState<DiaAgendado[]>([])
   const [loading, setLoading] = useState(true)

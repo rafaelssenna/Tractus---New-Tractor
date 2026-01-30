@@ -112,7 +112,7 @@ export default function AgendaInspetorPage() {
 
   // Verificar se é gestor (admin/diretor) ou inspetor (técnico)
   const isGestor = isAdmin || isDiretor
-  const isInspetor = user?.role === 'TECNICO'
+  const isInspetor = user?.role === 'INSPETOR'
 
   // Estados para solicitações (sem data)
   const [solicitacoes, setSolicitacoes] = useState<VisitaInspecao[]>([])

@@ -105,11 +105,11 @@ export async function visitasTecnicasRoutes(app: FastifyInstance) {
     }
   })
 
-  // Listar inspetores (usuários com role TECNICO)
+  // Listar inspetores (usuários com role INSPETOR)
   app.get('/inspetores', async () => {
     const inspetores = await db.user.findMany({
       where: {
-        role: 'TECNICO',
+        role: 'INSPETOR',
         active: true,
       },
       select: {
@@ -145,9 +145,9 @@ export async function visitasTecnicasRoutes(app: FastifyInstance) {
       return reply.status(400).send({ error: 'Não é possível agendar uma visita já realizada ou cancelada' })
     }
 
-    // Verificar se o inspetor existe e é técnico
+    // Verificar se o inspetor existe e tem role INSPETOR
     const inspetor = await db.user.findUnique({ where: { id: inspetorId } })
-    if (!inspetor || inspetor.role !== 'TECNICO') {
+    if (!inspetor || inspetor.role !== 'INSPETOR') {
       return reply.status(400).send({ error: 'Inspetor inválido' })
     }
 
