@@ -97,12 +97,13 @@ export function Sidebar() {
     if (item.submenu) {
       let filteredSubmenu = item.submenu.filter(sub => canAccessRoute(user?.role, sub.href))
 
-      // Para vendedoras, esconder "Visão Geral", "Vendedores" e "Agenda do Inspetor"
+      // Para vendedoras, esconder "Visão Geral", "Vendedores", "Agenda do Inspetor" e "Despesas Veículo"
       if (isVendedora) {
         filteredSubmenu = filteredSubmenu.filter(sub =>
           sub.href !== '/comercial' &&
           sub.href !== '/comercial/vendedores' &&
-          sub.href !== '/comercial/agenda-inspetor'
+          sub.href !== '/comercial/agenda-inspetor' &&
+          sub.href !== '/comercial/despesas-veiculo'
         )
         // Adicionar "Minhas Solicitações" no início para vendedoras
         filteredSubmenu = [
